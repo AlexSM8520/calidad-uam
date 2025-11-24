@@ -2,6 +2,11 @@ import type { POA, Actividad, POAType } from '../models/POA';
 import type { Area } from '../models/Area';
 import type { Carrera } from '../models/Carrera';
 import type { Facultad } from '../models/Facultad';
+import { poaService } from '../services/poaService';
+import { areaService } from '../services/areaService';
+import { carreraService } from '../services/carreraService';
+import { facultadService } from '../services/facultadService';
+import { normalizeArray, normalizeId, extractId } from '../utils/modelHelpers';
 
 export class POAViewModel {
   private poas: POA[] = [];
@@ -11,30 +16,51 @@ export class POAViewModel {
   private listeners: Array<() => void> = [];
 
   constructor() {
-    // Initialize with example areas
-    this.areas = [
-      { id: '1', nombre: 'Área Académica', descripcion: 'Gestión académica' },
-      { id: '2', nombre: 'Área Administrativa', descripcion: 'Gestión administrativa' },
-      { id: '3', nombre: 'Área de Investigación', descripcion: 'Gestión de investigación' },
-      { id: '4', nombre: 'Área de Extensión', descripcion: 'Gestión de extensión universitaria' },
-    ];
+    // Load data from API
+    this.loadAreas();
+    this.loadFacultades();
+    this.loadCarreras();
+    this.loadPOAs();
+  }
 
-    // Initialize with example facultades
-    this.facultades = [
-      { id: '1', nombre: 'Facultad de Ingeniería', descripcion: 'Facultad de Ingeniería' },
-      { id: '2', nombre: 'Facultad de Ciencias Económicas', descripcion: 'Facultad de Ciencias Económicas' },
-      { id: '3', nombre: 'Facultad de Ciencias Sociales', descripcion: 'Facultad de Ciencias Sociales' },
-      { id: '4', nombre: 'Facultad de Derecho', descripcion: 'Facultad de Derecho' },
-      { id: '5', nombre: 'Facultad de Ciencias de la Salud', descripcion: 'Facultad de Ciencias de la Salud' },
-    ];
+  private async loadAreas() {
+    try {
+      const areas = await areaService.getAll();
+      this.areas = normalizeArray(areas);
+      this.notify();
+    } catch (error) {
+      console.error('Error loading areas:', error);
+    }
+  }
 
-    // Initialize with example carreras
-    this.carreras = [
-      { id: '1', nombre: 'Ingeniería de Sistemas', descripcion: 'Carrera de Ingeniería de Sistemas', facultad: 'Facultad de Ingeniería' },
-      { id: '2', nombre: 'Administración de Empresas', descripcion: 'Carrera de Administración', facultad: 'Facultad de Ciencias Económicas' },
-      { id: '3', nombre: 'Psicología', descripcion: 'Carrera de Psicología', facultad: 'Facultad de Ciencias Sociales' },
-      { id: '4', nombre: 'Derecho', descripcion: 'Carrera de Derecho', facultad: 'Facultad de Derecho' },
-    ];
+  private async loadFacultades() {
+    try {
+      const facultades = await facultadService.getAll();
+      this.facultades = normalizeArray(facultades);
+      this.notify();
+    } catch (error) {
+      console.error('Error loading facultades:', error);
+    }
+  }
+
+  private async loadCarreras() {
+    try {
+      const carreras = await carreraService.getAll();
+      this.carreras = normalizeArray(carreras);
+      this.notify();
+    } catch (error) {
+      console.error('Error loading carreras:', error);
+    }
+  }
+
+  private async loadPOAs() {
+    try {
+      const poas = await poaService.getAll();
+      this.poas = normalizeArray(poas);
+      this.notify();
+    } catch (error) {
+      console.error('Error loading POAs:', error);
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -61,72 +87,91 @@ export class POAViewModel {
     return [...this.poas];
   }
 
-  createPOA(poa: Omit<POA, 'id' | 'actividades'>): POA {
-    const newPOA: POA = {
-      ...poa,
-      id: Date.now().toString(),
-      actividades: [],
-    };
-    this.poas.push(newPOA);
-    this.notify();
-    return newPOA;
+  async createPOA(poa: Omit<POA, 'id' | '_id' | 'actividades'> & { actividades?: Omit<Actividad, 'id' | '_id'>[] }): Promise<POA> {
+    try {
+      const newPOA = await poaService.create(poa);
+      const normalized = normalizeId(newPOA);
+      // Normalize actividades
+      if (normalized.actividades) {
+        normalized.actividades = normalized.actividades.map(a => normalizeId(a));
+      }
+      this.poas.push(normalized);
+      this.notify();
+      return normalized;
+    } catch (error) {
+      throw error;
+    }
   }
 
-  addActividadToPOA(poaId: string, actividad: Omit<Actividad, 'id'>): Actividad {
-    const poa = this.poas.find(p => p.id === poaId);
-    if (!poa) {
-      throw new Error('POA not found');
+  async addActividadToPOA(poaId: string, actividad: Omit<Actividad, 'id' | '_id'>): Promise<Actividad> {
+    try {
+      const updatedPOA = await poaService.addActividad(poaId, actividad);
+      const normalized = normalizeId(updatedPOA);
+      if (normalized.actividades) {
+        normalized.actividades = normalized.actividades.map(a => normalizeId(a));
+      }
+      const index = this.poas.findIndex(p => extractId(p) === poaId);
+      if (index !== -1) {
+        this.poas[index] = normalized;
+        this.notify();
+      }
+      // Return the last actividad (the one we just added)
+      const newActividad = normalized.actividades[normalized.actividades.length - 1];
+      return newActividad;
+    } catch (error) {
+      throw error;
     }
-
-    const newActividad: Actividad = {
-      ...actividad,
-      id: Date.now().toString(),
-    };
-    poa.actividades.push(newActividad);
-    this.notify();
-    return newActividad;
   }
 
-  updateActividad(poaId: string, actividadId: string, actividad: Partial<Actividad>): void {
-    const poa = this.poas.find(p => p.id === poaId);
-    if (!poa) {
-      throw new Error('POA not found');
+  async updateActividad(poaId: string, actividadId: string, actividad: Partial<Actividad>): Promise<void> {
+    try {
+      const updatedPOA = await poaService.updateActividad(poaId, actividadId, actividad);
+      const normalized = normalizeId(updatedPOA);
+      if (normalized.actividades) {
+        normalized.actividades = normalized.actividades.map(a => normalizeId(a));
+      }
+      const index = this.poas.findIndex(p => extractId(p) === poaId);
+      if (index !== -1) {
+        this.poas[index] = normalized;
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    const actividadIndex = poa.actividades.findIndex(a => a.id === actividadId);
-    if (actividadIndex === -1) {
-      throw new Error('Actividad not found');
-    }
-
-    poa.actividades[actividadIndex] = {
-      ...poa.actividades[actividadIndex],
-      ...actividad,
-    };
-    this.notify();
   }
 
-  deleteActividad(poaId: string, actividadId: string): void {
-    const poa = this.poas.find(p => p.id === poaId);
-    if (!poa) {
-      throw new Error('POA not found');
+  async deleteActividad(poaId: string, actividadId: string): Promise<void> {
+    try {
+      await poaService.deleteActividad(poaId, actividadId);
+      const poa = this.poas.find(p => extractId(p) === poaId);
+      if (poa) {
+        poa.actividades = poa.actividades.filter(a => extractId(a) !== actividadId);
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    poa.actividades = poa.actividades.filter(a => a.id !== actividadId);
-    this.notify();
   }
 
   getPOA(poaId: string): POA | undefined {
-    return this.poas.find(p => p.id === poaId);
+    return this.poas.find(p => extractId(p) === poaId);
   }
 
-  updatePOA(poaId: string, poaData: Partial<Omit<POA, 'id' | 'actividades'>>): void {
-    const poa = this.poas.find(p => p.id === poaId);
-    if (!poa) {
-      throw new Error('POA not found');
+  async updatePOA(poaId: string, poaData: Partial<Omit<POA, 'id' | '_id' | 'actividades'>>): Promise<void> {
+    try {
+      const updatedPOA = await poaService.update(poaId, poaData);
+      const normalized = normalizeId(updatedPOA);
+      if (normalized.actividades) {
+        normalized.actividades = normalized.actividades.map(a => normalizeId(a));
+      }
+      const index = this.poas.findIndex(p => extractId(p) === poaId);
+      if (index !== -1) {
+        this.poas[index] = normalized;
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    Object.assign(poa, poaData);
-    this.notify();
   }
 
   // Area management methods
@@ -165,38 +210,44 @@ export class POAViewModel {
   }
 
   // Carrera management methods
-  createCarrera(carrera: Omit<Carrera, 'id'>): Carrera {
-    const newCarrera: Carrera = {
-      ...carrera,
-      id: Date.now().toString(),
-    };
-    this.carreras.push(newCarrera);
-    this.notify();
-    return newCarrera;
+  async createCarrera(carrera: Omit<Carrera, 'id' | '_id'>): Promise<Carrera> {
+    try {
+      const newCarrera = await carreraService.create(carrera);
+      const normalized = normalizeId(newCarrera);
+      this.carreras.push(normalized);
+      this.notify();
+      return normalized;
+    } catch (error) {
+      throw error;
+    }
   }
 
-  updateCarrera(carreraId: string, carreraData: Partial<Omit<Carrera, 'id'>>): void {
-    const carrera = this.carreras.find(c => c.id === carreraId);
-    if (!carrera) {
-      throw new Error('Carrera not found');
+  async updateCarrera(carreraId: string, carreraData: Partial<Omit<Carrera, 'id' | '_id'>>): Promise<void> {
+    try {
+      const updatedCarrera = await carreraService.update(carreraId, carreraData);
+      const normalized = normalizeId(updatedCarrera);
+      const index = this.carreras.findIndex(c => extractId(c) === carreraId);
+      if (index !== -1) {
+        this.carreras[index] = normalized;
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    Object.assign(carrera, carreraData);
-    this.notify();
   }
 
-  deleteCarrera(carreraId: string): void {
-    const carreraIndex = this.carreras.findIndex(c => c.id === carreraId);
-    if (carreraIndex === -1) {
-      throw new Error('Carrera not found');
+  async deleteCarrera(carreraId: string): Promise<void> {
+    try {
+      await carreraService.delete(carreraId);
+      this.carreras = this.carreras.filter(c => extractId(c) !== carreraId);
+      this.notify();
+    } catch (error) {
+      throw error;
     }
-
-    this.carreras.splice(carreraIndex, 1);
-    this.notify();
   }
 
   getCarrera(carreraId: string): Carrera | undefined {
-    return this.carreras.find(c => c.id === carreraId);
+    return this.carreras.find(c => extractId(c) === carreraId);
   }
 
   // Facultad management methods
@@ -204,48 +255,44 @@ export class POAViewModel {
     return [...this.facultades];
   }
 
-  createFacultad(facultad: Omit<Facultad, 'id'>): Facultad {
-    const newFacultad: Facultad = {
-      ...facultad,
-      id: Date.now().toString(),
-    };
-    this.facultades.push(newFacultad);
-    this.notify();
-    return newFacultad;
+  async createFacultad(facultad: Omit<Facultad, 'id' | '_id'>): Promise<Facultad> {
+    try {
+      const newFacultad = await facultadService.create(facultad);
+      const normalized = normalizeId(newFacultad);
+      this.facultades.push(normalized);
+      this.notify();
+      return normalized;
+    } catch (error) {
+      throw error;
+    }
   }
 
-  updateFacultad(facultadId: string, facultadData: Partial<Omit<Facultad, 'id'>>): void {
-    const facultad = this.facultades.find(f => f.id === facultadId);
-    if (!facultad) {
-      throw new Error('Facultad not found');
+  async updateFacultad(facultadId: string, facultadData: Partial<Omit<Facultad, 'id' | '_id'>>): Promise<void> {
+    try {
+      const updatedFacultad = await facultadService.update(facultadId, facultadData);
+      const normalized = normalizeId(updatedFacultad);
+      const index = this.facultades.findIndex(f => extractId(f) === facultadId);
+      if (index !== -1) {
+        this.facultades[index] = normalized;
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    Object.assign(facultad, facultadData);
-    this.notify();
   }
 
-  deleteFacultad(facultadId: string): void {
-    // Check if any carrera is using this facultad
-    const carrerasUsingFacultad = this.carreras.some(c => {
-      const facultad = this.facultades.find(f => f.id === facultadId);
-      return facultad && c.facultad === facultad.nombre;
-    });
-
-    if (carrerasUsingFacultad) {
-      throw new Error('No se puede eliminar la facultad porque está siendo utilizada por una o más carreras');
+  async deleteFacultad(facultadId: string): Promise<void> {
+    try {
+      await facultadService.delete(facultadId);
+      this.facultades = this.facultades.filter(f => extractId(f) !== facultadId);
+      this.notify();
+    } catch (error) {
+      throw error;
     }
-
-    const facultadIndex = this.facultades.findIndex(f => f.id === facultadId);
-    if (facultadIndex === -1) {
-      throw new Error('Facultad not found');
-    }
-
-    this.facultades.splice(facultadIndex, 1);
-    this.notify();
   }
 
   getFacultad(facultadId: string): Facultad | undefined {
-    return this.facultades.find(f => f.id === facultadId);
+    return this.facultades.find(f => extractId(f) === facultadId);
   }
 }
 

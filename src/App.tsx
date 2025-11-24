@@ -13,6 +13,10 @@ import { CreatePOA } from './views/CreatePOA/CreatePOA';
 import { EditPOA } from './views/EditPOA/EditPOA';
 import { POAs } from './views/POAs/POAs';
 import { Facultades } from './views/Facultades/Facultades';
+import { Users } from './views/Users/Users';
+import { Dashboard } from './views/Dashboard/Dashboard';
+import { UserPOAs } from './views/UserPOAs/UserPOAs';
+import { RoleProtectedRoute } from './components/RoleProtectedRoute/RoleProtectedRoute';
 import { authViewModel } from './viewmodels/AuthViewModel';
 import type { AuthState } from './models/User';
 import './App.css';
@@ -37,77 +41,105 @@ function App() {
         <Route path="/" element={
           <ProtectedRoute>
             <Layout>
-              <Home />
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
             </Layout>
           </ProtectedRoute>
         } />
         <Route path="/home" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Home />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/linea" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Linea />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/objetivos" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Objetivos />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/indicadores" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Indicadores />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/create-poa" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <CreatePOA />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/poas" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <POAs />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/edit-poa/:id" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <EditPOA />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/area" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Area />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/carrera" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Carrera />
             </Layout>
-          </ProtectedRoute>
+          </RoleProtectedRoute>
         } />
         <Route path="/facultades" element={
-          <ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <Facultades />
+            </Layout>
+          </RoleProtectedRoute>
+        } />
+        <Route path="/users" element={
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
+            <Layout>
+              <Users />
+            </Layout>
+          </RoleProtectedRoute>
+        } />
+        <Route path="/user-poas" element={
+          <ProtectedRoute>
+            <Layout>
+              <UserPOAs />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/user-poas/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <UserPOAs />
             </Layout>
           </ProtectedRoute>
         } />

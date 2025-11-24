@@ -17,8 +17,12 @@ export const Sidebar = () => {
     carreraArea: false,
   });
 
-  // Auto-expand sections based on current route
+  // Auto-expand sections based on current route (only for admin)
   useEffect(() => {
+    const user = authViewModel.getAuthState().user;
+    if (user?.rol !== 'Administrador') {
+      return;
+    }
     const path = location.pathname;
     setExpandedSections({
       lineaEstrategica: path === '/linea' || path === '/objetivos' || path === '/indicadores',
@@ -40,6 +44,9 @@ export const Sidebar = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
+  const user = authViewModel.getAuthState().user;
+  const isAdmin = user?.rol === 'Administrador';
+  const isUsuario = user?.rol === 'Usuario';
 
   return (
     <aside className="sidebar">
@@ -49,12 +56,31 @@ export const Sidebar = () => {
       </div>
       
       <nav className="sidebar-nav">
-        <button
-          className={`nav-item ${isActive('/home') ? 'active' : ''}`}
-          onClick={() => navigate('/home')}
-        >
-          Home
-        </button>
+        {isUsuario && (
+          <>
+            <button
+              className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
+              onClick={() => navigate('/dashboard')}
+            >
+              Dashboard
+            </button>
+            <button
+              className={`nav-item ${isActive('/user-poas') || location.pathname.startsWith('/user-poas/') ? 'active' : ''}`}
+              onClick={() => navigate('/user-poas')}
+            >
+              POAs
+            </button>
+          </>
+        )}
+
+        {isAdmin && (
+          <>
+            <button
+              className={`nav-item ${isActive('/home') ? 'active' : ''}`}
+              onClick={() => navigate('/home')}
+            >
+              Home
+            </button>
 
         <div className="nav-section">
           <button
@@ -136,15 +162,18 @@ export const Sidebar = () => {
               >
                 Carrera
               </button>
-              <button
-                className={`nav-item ${isActive('/facultades') ? 'active' : ''}`}
-                onClick={() => navigate('/facultades')}
-              >
-                Facultades
-              </button>
             </div>
           )}
         </div>
+
+            <button
+              className={`nav-item ${isActive('/users') ? 'active' : ''}`}
+              onClick={() => navigate('/users')}
+            >
+              Usuarios
+            </button>
+          </>
+        )}
 
         <button className="nav-item logout" onClick={handleLogout}>
           Logout

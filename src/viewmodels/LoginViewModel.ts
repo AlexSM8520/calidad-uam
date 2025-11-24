@@ -23,19 +23,22 @@ export class LoginViewModel {
     this.error = '';
     this.notify();
 
-    // Simulate async operation
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const success = authViewModel.login(username, password);
-    
-    this.isLoading = false;
-    
-    if (!success) {
-      this.error = 'Invalid credentials. Use Admin / 123';
+    try {
+      const success = await authViewModel.login(username, password);
+      this.isLoading = false;
+      
+      if (!success) {
+        this.error = 'Credenciales inválidas';
+      }
+      
+      this.notify();
+      return success;
+    } catch (error) {
+      this.isLoading = false;
+      this.error = error instanceof Error ? error.message : 'Error al iniciar sesión';
+      this.notify();
+      return false;
     }
-    
-    this.notify();
-    return success;
   }
 
   getError(): string {

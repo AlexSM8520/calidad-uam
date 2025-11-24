@@ -4,6 +4,7 @@ import { lineaViewModel } from '../../viewmodels/LineaViewModel';
 import { objetivoViewModel } from '../../viewmodels/ObjetivoViewModel';
 import { indicadorViewModel } from '../../viewmodels/IndicadorViewModel';
 import { ActividadForm } from '../../components/ActividadForm/ActividadForm';
+import { extractId } from '../../utils/modelHelpers';
 import type { POAType, Actividad } from '../../models/POA';
 import type { Linea } from '../../models/Linea';
 import type { Objetivo } from '../../models/Objetivo';
@@ -96,22 +97,26 @@ export const CreatePOA = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCreatePOA = () => {
+  const handleCreatePOA = async () => {
     if (!validateForm()) {
       return;
     }
 
-    const poa = poaViewModel.createPOA({
-      tipo: tipo as POAType,
-      areaId: tipo === 'area' ? areaId : undefined,
-      carreraId: tipo === 'carrera' ? carreraId : undefined,
-      periodo,
-      fechaInicio,
-      fechaFin,
-    });
+    try {
+      const poa = await poaViewModel.createPOA({
+        tipo: tipo as POAType,
+        areaId: tipo === 'area' ? areaId : undefined,
+        carreraId: tipo === 'carrera' ? carreraId : undefined,
+        periodo,
+        fechaInicio,
+        fechaFin,
+      });
 
-    setPoaId(poa.id);
-    setActividades([]);
+      setPoaId(poa.id || poa._id || '');
+      setActividades([]);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al crear el POA');
+    }
   };
 
   const handleAddActividad = () => {
@@ -124,25 +129,34 @@ export const CreatePOA = () => {
     setIsActividadFormOpen(true);
   };
 
-  const handleSaveActividad = (actividadData: Omit<Actividad, 'id'>) => {
+  const handleSaveActividad = async (actividadData: Omit<Actividad, 'id' | '_id'>) => {
     if (!poaId) {
       alert('Debe crear el POA primero');
       return;
     }
 
-    if (editingActividad) {
-      poaViewModel.updateActividad(poaId, editingActividad.id, actividadData);
-    } else {
-      poaViewModel.addActividadToPOA(poaId, actividadData);
+    try {
+      const actividadId = editingActividad?.id || editingActividad?._id || '';
+      if (editingActividad && actividadId) {
+        await poaViewModel.updateActividad(poaId, actividadId, actividadData);
+      } else {
+        await poaViewModel.addActividadToPOA(poaId, actividadData);
+      }
+      setIsActividadFormOpen(false);
+      setEditingActividad(undefined);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al guardar la actividad');
     }
-    setIsActividadFormOpen(false);
-    setEditingActividad(undefined);
   };
 
-  const handleDeleteActividad = (actividadId: string) => {
+  const handleDeleteActividad = async (actividadId: string) => {
     if (!poaId) return;
     if (confirm('¿Está seguro de eliminar esta actividad?')) {
-      poaViewModel.deleteActividad(poaId, actividadId);
+      try {
+        await poaViewModel.deleteActividad(poaId, actividadId);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Error al eliminar la actividad');
+      }
     }
   };
 
@@ -159,18 +173,43 @@ export const CreatePOA = () => {
     }
   };
 
-  const getLineaNombre = (lineaId: string): string => {
-    const linea = lineas.find(l => l.id === lineaId);
+  // Helper para obtener el ID de un campo que puede ser string o objeto
+  const getId = (idOrObj: string | { _id?: string; id?: string } | undefined): string => {
+    if (!idOrObj) return '';
+    if (typeof idOrObj === 'string') return idOrObj;
+    return idOrObj._id || idOrObj.id || '';
+  };
+
+  const getLineaNombre = (lineaId: string | { _id: string; nombre: string }): string => {
+    if (typeof lineaId === 'object' && lineaId !== null) {
+      return lineaId.nombre || 'N/A';
+    }
+    const linea = lineas.find(l => {
+      const lId = extractId(l);
+      return lId === lineaId;
+    });
     return linea?.nombre || 'N/A';
   };
 
-  const getObjetivoNombre = (objetivoId: string): string => {
-    const objetivo = objetivos.find(o => o.id === objetivoId);
+  const getObjetivoNombre = (objetivoId: string | { _id: string; nombre: string }): string => {
+    if (typeof objetivoId === 'object' && objetivoId !== null) {
+      return objetivoId.nombre || 'N/A';
+    }
+    const objetivo = objetivos.find(o => {
+      const oId = extractId(o);
+      return oId === objetivoId;
+    });
     return objetivo ? `${objetivo.codigoReferencia} - ${objetivo.nombre}` : 'N/A';
   };
 
-  const getIndicadorNombre = (indicadorId: string): string => {
-    const indicador = indicadores.find(i => i.id === indicadorId);
+  const getIndicadorNombre = (indicadorId: string | { _id: string; nombre: string }): string => {
+    if (typeof indicadorId === 'object' && indicadorId !== null) {
+      return indicadorId.nombre || 'N/A';
+    }
+    const indicador = indicadores.find(i => {
+      const iId = extractId(i);
+      return iId === indicadorId;
+    });
     return indicador ? `${indicador.codigo} - ${indicador.nombre}` : 'N/A';
   };
 
@@ -217,11 +256,14 @@ export const CreatePOA = () => {
                   className={errors.areaId ? 'error' : ''}
                 >
                   <option value="">Seleccione un área</option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.nombre}
-                    </option>
-                  ))}
+                  {areas.map((area) => {
+                    const areaId = extractId(area);
+                    return (
+                      <option key={areaId} value={areaId}>
+                        {area.nombre}
+                      </option>
+                    );
+                  })}
                 </select>
                 {errors.areaId && <span className="error-message">{errors.areaId}</span>}
               </div>
@@ -239,11 +281,14 @@ export const CreatePOA = () => {
                   className={errors.carreraId ? 'error' : ''}
                 >
                   <option value="">Seleccione una carrera</option>
-                  {carreras.map((carrera) => (
-                    <option key={carrera.id} value={carrera.id}>
-                      {carrera.nombre}
-                    </option>
-                  ))}
+                  {carreras.map((carrera) => {
+                    const carreraId = extractId(carrera);
+                    return (
+                      <option key={carreraId} value={carreraId}>
+                        {carrera.nombre}
+                      </option>
+                    );
+                  })}
                 </select>
                 {errors.carreraId && <span className="error-message">{errors.carreraId}</span>}
               </div>
@@ -345,38 +390,41 @@ export const CreatePOA = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {actividades.map((actividad) => (
-                    <tr key={actividad.id}>
-                      <td className="nombre-cell">{actividad.nombre}</td>
-                      <td className="descripcion-cell">{actividad.descripcion}</td>
-                      <td>{actividad.frecuencia}</td>
-                      <td>{getLineaNombre(actividad.lineaId)}</td>
-                      <td className="objetivo-cell">{getObjetivoNombre(actividad.objetivoId)}</td>
-                      <td className="indicador-cell">{getIndicadorNombre(actividad.indicadorId)}</td>
-                      <td>{actividad.responsable}</td>
-                      <td>
-                        <span className={`estado-badge ${getEstadoBadgeClass(actividad.estado)}`}>
-                          {actividad.estado}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="btn-edit"
-                            onClick={() => handleEditActividad(actividad)}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            className="btn-delete"
-                            onClick={() => handleDeleteActividad(actividad.id)}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {actividades.map((actividad) => {
+                    const actividadId = actividad.id || actividad._id || '';
+                    return (
+                      <tr key={actividadId}>
+                        <td className="nombre-cell">{actividad.nombre}</td>
+                        <td className="descripcion-cell">{actividad.descripcion}</td>
+                        <td>{actividad.frecuencia}</td>
+                        <td>{getLineaNombre(actividad.lineaId)}</td>
+                        <td className="objetivo-cell">{getObjetivoNombre(actividad.objetivoId)}</td>
+                        <td className="indicador-cell">{getIndicadorNombre(actividad.indicadorId)}</td>
+                        <td>{actividad.responsable}</td>
+                        <td>
+                          <span className={`estado-badge ${getEstadoBadgeClass(actividad.estado)}`}>
+                            {actividad.estado}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="btn-edit"
+                              onClick={() => handleEditActividad(actividad)}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDeleteActividad(actividadId)}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

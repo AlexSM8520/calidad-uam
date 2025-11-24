@@ -6,6 +6,7 @@ import { indicadorViewModel } from '../../viewmodels/IndicadorViewModel';
 import type { Linea } from '../../models/Linea';
 import type { Objetivo } from '../../models/Objetivo';
 import type { Indicador } from '../../models/Indicador';
+import { extractId } from '../../utils/modelHelpers';
 import './ActividadForm.css';
 
 interface ActividadFormProps {
@@ -29,9 +30,9 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
     responsable: actividad?.responsable || '',
     estado: actividad?.estado || 'Pendiente' as Actividad['estado'],
     frecuencia: actividad?.frecuencia || 'Mensual' as FrecuenciaReporte,
-    lineaId: actividad?.lineaId || '',
-    objetivoId: actividad?.objetivoId || '',
-    indicadorId: actividad?.indicadorId || '',
+    lineaId: typeof actividad?.lineaId === 'string' ? actividad.lineaId : (actividad?.lineaId?._id || actividad?.lineaId?.id || ''),
+    objetivoId: typeof actividad?.objetivoId === 'string' ? actividad.objetivoId : (actividad?.objetivoId?._id || actividad?.objetivoId?.id || ''),
+    indicadorId: typeof actividad?.indicadorId === 'string' ? actividad.indicadorId : (actividad?.indicadorId?._id || actividad?.indicadorId?.id || ''),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,35 +57,60 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
     };
   }, []);
 
+  // Helper para obtener el ID de un campo que puede ser string o objeto
+  const getId = (idOrObj: string | { _id?: string; id?: string } | undefined): string => {
+    if (!idOrObj) return '';
+    if (typeof idOrObj === 'string') return idOrObj;
+    return idOrObj._id || idOrObj.id || '';
+  };
+
   // Filtrar objetivos por línea seleccionada
   const objetivosFiltrados = formData.lineaId
-    ? objetivos.filter(obj => obj.lineaId === formData.lineaId)
+    ? objetivos.filter(obj => {
+        const objLineaId = getId(obj.lineaId);
+        return objLineaId === formData.lineaId;
+      })
     : [];
 
   // Filtrar indicadores por objetivo seleccionado
   const indicadoresFiltrados = formData.objetivoId
-    ? indicadores.filter(ind => ind.objetivoId === formData.objetivoId)
+    ? indicadores.filter(ind => {
+        const indObjetivoId = getId(ind.objetivoId);
+        return indObjetivoId === formData.objetivoId;
+      })
     : [];
 
   // Reset objetivo e indicador cuando cambia la línea
   useEffect(() => {
     if (formData.lineaId && formData.objetivoId) {
-      const objetivo = objetivos.find(obj => obj.id === formData.objetivoId);
-      if (objetivo && objetivo.lineaId !== formData.lineaId) {
-        setFormData(prev => ({ ...prev, objetivoId: '', indicadorId: '' }));
+      const objetivo = objetivos.find(obj => {
+        const objId = extractId(obj);
+        return objId === formData.objetivoId;
+      });
+      if (objetivo) {
+        const objLineaId = getId(objetivo.lineaId);
+        if (objLineaId !== formData.lineaId) {
+          setFormData(prev => ({ ...prev, objetivoId: '', indicadorId: '' }));
+        }
       }
     }
-  }, [formData.lineaId, objetivos]);
+  }, [formData.lineaId, formData.objetivoId, objetivos]);
 
   // Reset indicador cuando cambia el objetivo
   useEffect(() => {
     if (formData.objetivoId && formData.indicadorId) {
-      const indicador = indicadores.find(ind => ind.id === formData.indicadorId);
-      if (indicador && indicador.objetivoId !== formData.objetivoId) {
-        setFormData(prev => ({ ...prev, indicadorId: '' }));
+      const indicador = indicadores.find(ind => {
+        const indId = extractId(ind);
+        return indId === formData.indicadorId;
+      });
+      if (indicador) {
+        const indObjetivoId = getId(indicador.objetivoId);
+        if (indObjetivoId !== formData.objetivoId) {
+          setFormData(prev => ({ ...prev, indicadorId: '' }));
+        }
       }
     }
-  }, [formData.objetivoId, indicadores]);
+  }, [formData.objetivoId, formData.indicadorId, indicadores]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -228,11 +254,14 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
               className={errors.lineaId ? 'error' : ''}
             >
               <option value="">Seleccione una línea estratégica</option>
-              {lineas.map((linea) => (
-                <option key={linea.id} value={linea.id}>
-                  {linea.nombre}
-                </option>
-              ))}
+              {lineas.map((linea) => {
+                const lineaId = extractId(linea);
+                return (
+                  <option key={lineaId} value={lineaId}>
+                    {linea.nombre}
+                  </option>
+                );
+              })}
             </select>
             {errors.lineaId && <span className="error-message">{errors.lineaId}</span>}
           </div>
@@ -254,11 +283,14 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
               <option value="">
                 {formData.lineaId ? 'Seleccione un objetivo' : 'Primero seleccione una línea'}
               </option>
-              {objetivosFiltrados.map((objetivo) => (
-                <option key={objetivo.id} value={objetivo.id}>
-                  {objetivo.codigoReferencia} - {objetivo.nombre}
-                </option>
-              ))}
+              {objetivosFiltrados.map((objetivo) => {
+                const objetivoId = extractId(objetivo);
+                return (
+                  <option key={objetivoId} value={objetivoId}>
+                    {objetivo.codigoReferencia} - {objetivo.nombre}
+                  </option>
+                );
+              })}
             </select>
             {errors.objetivoId && <span className="error-message">{errors.objetivoId}</span>}
           </div>
@@ -277,11 +309,14 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
               <option value="">
                 {formData.objetivoId ? 'Seleccione un indicador' : 'Primero seleccione un objetivo'}
               </option>
-              {indicadoresFiltrados.map((indicador) => (
-                <option key={indicador.id} value={indicador.id}>
-                  {indicador.codigo} - {indicador.nombre}
-                </option>
-              ))}
+              {indicadoresFiltrados.map((indicador) => {
+                const indicadorId = extractId(indicador);
+                return (
+                  <option key={indicadorId} value={indicadorId}>
+                    {indicador.codigo} - {indicador.nombre}
+                  </option>
+                );
+              })}
             </select>
             {errors.indicadorId && <span className="error-message">{errors.indicadorId}</span>}
           </div>

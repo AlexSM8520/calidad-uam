@@ -1,7 +1,8 @@
 export type PlanType = 'Plan institucional' | 'Plan nacional';
 
 export interface Linea {
-  id: string;
+  id?: string;
+  _id?: string; // MongoDB format
   nombre: string;
   descripcion: string;
   duracion: number; // in months
@@ -9,5 +10,7 @@ export interface Linea {
   fechaFin: string;
   color: string;
   plan: PlanType;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
