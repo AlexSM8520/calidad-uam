@@ -1,0 +1,54 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Color Variables - Celeste and White Theme */
+  --color-primary: #0099a8; /* Celeste */
+  --color-primary-dark: #007a86; /* Darker celeste for hover states */
+  --color-primary-light: #4db8c4; /* Lighter celeste for backgrounds */
+  --color-primary-lighter: #b3e5eb; /* Very light celeste for subtle backgrounds */
+  
+  --color-secondary: #FFFFFF; /* White */
+  --color-secondary-dark: #F5F5F5; /* Off-white for subtle backgrounds */
+  
+  --color-text-primary: #1A1A1A; /* Dark text for white/celeste backgrounds */
+  --color-text-secondary: #333333; /* Medium dark text */
+  --color-text-light: #666666; /* Light gray text */
+  --color-text-on-primary: #FFFFFF; /* White text on celeste backgrounds */
+  
+  --color-background: #FFFFFF; /* Main background - white */
+  --color-background-alt: #F8F9FA; /* Alternative background */
+  --color-background-primary: #E0F7FA; /* Celeste tinted background */
+  
+  --color-border: #0099a8; /* Celeste borders */
+  --color-border-light: #4db8c4; /* Light celeste borders */
+  --color-border-dark: #007a86; /* Darker celeste borders */
+  
+  --color-error: #DC2626; /* Red for errors */
+  --color-error-light: #FEE2E2; /* Light red background */
+  
+  --color-success: #22C55E; /* Green for success */
+  --color-warning: #F59E0B; /* Orange for warnings */
+  
+  color-scheme: light;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
+

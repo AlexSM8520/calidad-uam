@@ -1,0 +1,132 @@
+.poas-container {
+  width: 100%;
+  padding: 0;
+}
+
+.poas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.poas-header h1 {
+  margin: 0;
+  color: var(--color-primary);
+  font-size: 2rem;
+}
+
+.btn-create {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-create:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.empty-state {
+  background-color: var(--color-secondary);
+  border: 2px solid var(--color-border-light);
+  border-radius: 8px;
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+.table-container {
+  background-color: var(--color-secondary);
+  border: 2px solid var(--color-border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.poas-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.poas-table thead {
+  background-color: var(--color-primary);
+}
+
+.poas-table th {
+  padding: 1rem;
+  text-align: left;
+  color: var(--color-text-on-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--color-primary-dark);
+}
+
+.poas-table td {
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.poas-table tbody tr:hover {
+  background-color: var(--color-primary-lighter);
+}
+
+.poas-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tipo-badge {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  background-color: var(--color-primary-lighter);
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.nombre-cell {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.actividades-count {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.btn-edit {
+  padding: 0.5rem 1rem;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-edit:hover {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+}
+
+@media (max-width: 768px) {
+  .poas-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
