@@ -1,6 +1,6 @@
 # Calidad UAM
 
-Sistema de gestión de calidad para la Universidad Autónoma de Manizales (UAM). Esta aplicación permite gestionar líneas estratégicas, objetivos, indicadores, POAs (Plan Operativo Anual), áreas, carreras y facultades.
+Sistema de gestión de calidad para la Universidad Americana UAM Managua, Nicaragua. Esta aplicación permite gestionar líneas estratégicas, objetivos, indicadores, POAs (Plan Operativo Anual), áreas, carreras y facultades.
 
 ## 🚀 Inicio Rápido
 
@@ -250,5 +250,5 @@ Para cambiar los colores del tema, edita las variables CSS en `src/index.css`:
 
 ## 📄 Licencia
 
-Este proyecto es privado y pertenece a la Universidad Autónoma de Manizales.
+Este proyecto es privado y pertenece a la Universidad Americana UAM Managua, Nicaragua.
 
