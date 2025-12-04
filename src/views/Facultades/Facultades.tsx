@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
 import { FacultadForm } from '../../components/FacultadForm/FacultadForm';
 import type { Facultad as FacultadType } from '../../models/Facultad';
+import { extractId } from '../../utils/modelHelpers';
 import './Facultades.css';
 
 export const Facultades = () => {
@@ -28,7 +29,10 @@ export const Facultades = () => {
 
   const handleSaveFacultad = (facultadData: Omit<FacultadType, 'id'>) => {
     if (editingFacultad) {
-      poaViewModel.updateFacultad(editingFacultad.id, facultadData);
+      const facultadId = extractId(editingFacultad);
+      if (facultadId) {
+        poaViewModel.updateFacultad(facultadId, facultadData);
+      }
     } else {
       poaViewModel.createFacultad(facultadData);
     }
@@ -90,7 +94,10 @@ export const Facultades = () => {
                       </button>
                       <button
                         className="btn-delete"
-                        onClick={() => handleDeleteFacultad(facultad.id)}
+                        onClick={() => {
+                          const facultadId = extractId(facultad);
+                          if (facultadId) handleDeleteFacultad(facultadId);
+                        }}
                       >
                         Eliminar
                       </button>

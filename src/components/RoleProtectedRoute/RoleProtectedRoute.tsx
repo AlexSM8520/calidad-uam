@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { authViewModel } from '../../viewmodels/AuthViewModel';
+import { useAuthStore } from '../../stores/authStore';
 import type { UserRole } from '../../models/User';
 
 interface RoleProtectedRouteProps {
@@ -9,14 +9,15 @@ interface RoleProtectedRouteProps {
 }
 
 export const RoleProtectedRoute = ({ children, allowedRoles }: RoleProtectedRouteProps) => {
-  const authState = authViewModel.getAuthState();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
 
-  if (!authState.isAuthenticated || !authState.user) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 
   // Map 'Usuario' role to check for both 'Usuario' and old role names
-  const userRole = authState.user.rol;
+  const userRole = user.rol;
   const isAllowed = allowedRoles.includes(userRole) || 
     (userRole === 'Usuario' && allowedRoles.includes('Visualizador' as any)) ||
     (userRole === 'Usuario' && allowedRoles.includes('Editor' as any));

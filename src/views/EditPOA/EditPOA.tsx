@@ -9,6 +9,7 @@ import type { POAType, Actividad } from '../../models/POA';
 import type { Linea } from '../../models/Linea';
 import type { Objetivo } from '../../models/Objetivo';
 import type { Indicador } from '../../models/Indicador';
+import { extractId } from '../../utils/modelHelpers';
 import './EditPOA.css';
 
 export const EditPOA = () => {
@@ -45,12 +46,23 @@ export const EditPOA = () => {
 
     // Cargar datos del POA
     setTipo(poa.tipo);
-    setAreaId(poa.areaId || '');
-    setCarreraId(poa.carreraId || '');
+    // Handle areaId and carreraId as string or object
+    const areaIdValue = typeof poa.areaId === 'string' 
+      ? poa.areaId 
+      : (poa.areaId && typeof poa.areaId === 'object' && '_id' in poa.areaId)
+        ? poa.areaId._id
+        : '';
+    const carreraIdValue = typeof poa.carreraId === 'string'
+      ? poa.carreraId
+      : (poa.carreraId && typeof poa.carreraId === 'object' && '_id' in poa.carreraId)
+        ? poa.carreraId._id
+        : '';
+    setAreaId(areaIdValue);
+    setCarreraId(carreraIdValue);
     setPeriodo(poa.periodo);
     setFechaInicio(poa.fechaInicio);
     setFechaFin(poa.fechaFin);
-    setActividades(poa.actividades);
+    setActividades(poa.actividades || []);
   }, [id, navigate]);
 
   useEffect(() => {
@@ -154,7 +166,10 @@ export const EditPOA = () => {
     }
 
     if (editingActividad) {
-      poaViewModel.updateActividad(id, editingActividad.id, actividadData);
+      const actividadId = extractId(editingActividad);
+      if (actividadId) {
+        poaViewModel.updateActividad(id, actividadId, actividadData);
+      }
     } else {
       poaViewModel.addActividadToPOA(id, actividadData);
     }
@@ -182,18 +197,21 @@ export const EditPOA = () => {
     }
   };
 
-  const getLineaNombre = (lineaId: string): string => {
-    const linea = lineas.find(l => l.id === lineaId);
+  const getLineaNombre = (lineaId: string | { _id?: string; nombre?: string }): string => {
+    const id = extractId(lineaId);
+    const linea = lineas.find(l => extractId(l) === id);
     return linea?.nombre || 'N/A';
   };
 
-  const getObjetivoNombre = (objetivoId: string): string => {
-    const objetivo = objetivos.find(o => o.id === objetivoId);
+  const getObjetivoNombre = (objetivoId: string | { _id?: string; nombre?: string }): string => {
+    const id = extractId(objetivoId);
+    const objetivo = objetivos.find(o => extractId(o) === id);
     return objetivo ? `${objetivo.codigoReferencia} - ${objetivo.nombre}` : 'N/A';
   };
 
-  const getIndicadorNombre = (indicadorId: string): string => {
-    const indicador = indicadores.find(i => i.id === indicadorId);
+  const getIndicadorNombre = (indicadorId: string | { _id?: string; nombre?: string }): string => {
+    const id = extractId(indicadorId);
+    const indicador = indicadores.find(i => extractId(i) === id);
     return indicador ? `${indicador.codigo} - ${indicador.nombre}` : 'N/A';
   };
 
@@ -397,7 +415,10 @@ export const EditPOA = () => {
                         </button>
                         <button
                           className="btn-delete"
-                          onClick={() => handleDeleteActividad(actividad.id)}
+                          onClick={() => {
+                            const actividadId = extractId(actividad);
+                            if (actividadId) handleDeleteActividad(actividadId);
+                          }}
                         >
                           Eliminar
                         </button>

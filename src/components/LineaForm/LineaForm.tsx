@@ -53,20 +53,21 @@ export const LineaForm = ({ onClose }: LineaFormProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    lineaViewModel.addLinea({
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      duracion,
-      fechaInicio,
-      fechaFin,
-      color,
+    try {
+      await lineaViewModel.addLinea({
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim(),
+        duracion,
+        fechaInicio,
+        fechaFin,
+        color,
       plan,
     });
 
@@ -80,7 +81,12 @@ export const LineaForm = ({ onClose }: LineaFormProps) => {
     setPlan('Plan institucional');
     setErrors({});
 
-    onClose();
+      // Close modal after successful creation
+      lineaViewModel.closeForm();
+      onClose();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al crear la línea');
+    }
   };
 
   const handleFechaInicioChange = (value: string) => {

@@ -6,7 +6,15 @@ export const objetivoService = {
     const url = lineaId ? `/objetivos?lineaId=${lineaId}` : '/objetivos';
     const response = await apiClient.get<{ data: Objetivo[]; count: number }>(url);
     if (response.success && response.data) {
-      return (response.data as any).data || [];
+      // Handle different response structures
+      const objetivos = (response.data as any).data || response.data;
+      if (Array.isArray(objetivos)) {
+        return objetivos;
+      }
+      // If response.data is the array directly
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
     }
     return [];
   },
@@ -22,7 +30,17 @@ export const objetivoService = {
   async create(objetivoData: Omit<Objetivo, 'id'>): Promise<Objetivo> {
     const response = await apiClient.post<{ data: Objetivo }>('/objetivos', objetivoData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const objetivo = (response.data as any).data || response.data;
+      if (!objetivo) {
+        throw new Error('No objetivo data returned from server');
+      }
+      // Ensure all required fields are present
+      if (!objetivo.nombre || !objetivo.descripcion || !objetivo.lineaId) {
+        console.error('Incomplete objetivo data:', objetivo);
+        throw new Error('Incomplete objetivo data returned from server');
+      }
+      return objetivo;
     }
     throw new Error(response.message || 'Failed to create objetivo');
   },

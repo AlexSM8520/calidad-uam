@@ -22,8 +22,8 @@ export interface POA {
   id?: string;
   _id?: string; // MongoDB format
   tipo: POAType;
-  areaId?: string | null;
-  carreraId?: string | null;
+  areaId?: string | { _id: string; nombre: string; descripcion?: string } | null; // Can be string or populated object
+  carreraId?: string | { _id: string; nombre: string; descripcion?: string; facultad?: string } | null; // Can be string or populated object
   periodo: number; // year
   fechaInicio: string;
   fechaFin: string;

@@ -1,4 +1,4 @@
-import type { POA, Actividad, POAType } from '../models/POA';
+import type { POA, Actividad } from '../models/POA';
 import type { Area } from '../models/Area';
 import type { Carrera } from '../models/Carrera';
 import type { Facultad } from '../models/Facultad';
@@ -6,6 +6,7 @@ import { poaService } from '../services/poaService';
 import { areaService } from '../services/areaService';
 import { carreraService } from '../services/carreraService';
 import { facultadService } from '../services/facultadService';
+import { useAuthStore } from '../stores/authStore';
 import { normalizeArray, normalizeId, extractId } from '../utils/modelHelpers';
 
 export class POAViewModel {
@@ -14,13 +15,40 @@ export class POAViewModel {
   private carreras: Carrera[] = [];
   private facultades: Facultad[] = [];
   private listeners: Array<() => void> = [];
+  private dataLoaded: boolean = false;
 
   constructor() {
-    // Load data from API
+    // Subscribe to auth changes and load data when authenticated
+    useAuthStore.subscribe(
+      (state) => state.isAuthenticated,
+      (isAuthenticated) => {
+        if (isAuthenticated && !this.dataLoaded) {
+          this.loadData();
+        } else if (!isAuthenticated) {
+          // Clear data when logged out
+          this.poas = [];
+          this.areas = [];
+          this.carreras = [];
+          this.facultades = [];
+          this.dataLoaded = false;
+          this.notify();
+        }
+      },
+      { equalityFn: (a, b) => a === b }
+    );
+
+    // Load data if already authenticated
+    if (useAuthStore.getState().isAuthenticated) {
+      this.loadData();
+    }
+  }
+
+  private loadData() {
     this.loadAreas();
     this.loadFacultades();
     this.loadCarreras();
     this.loadPOAs();
+    this.dataLoaded = true;
   }
 
   private async loadAreas() {
@@ -56,7 +84,17 @@ export class POAViewModel {
   private async loadPOAs() {
     try {
       const poas = await poaService.getAll();
-      this.poas = normalizeArray(poas);
+      // Normalize POAs and ensure actividades is always an array
+      this.poas = normalizeArray(poas).map(poa => {
+        if (!poa.actividades) {
+          poa.actividades = [];
+        } else {
+          poa.actividades = poa.actividades.map(a => normalizeId(a));
+        }
+        // Keep areaId and carreraId as they come (can be string or object)
+        // Don't normalize them to strings, as we need the object structure for display
+        return poa;
+      });
       this.notify();
     } catch (error) {
       console.error('Error loading POAs:', error);
@@ -90,15 +128,21 @@ export class POAViewModel {
   async createPOA(poa: Omit<POA, 'id' | '_id' | 'actividades'> & { actividades?: Omit<Actividad, 'id' | '_id'>[] }): Promise<POA> {
     try {
       const newPOA = await poaService.create(poa);
+      if (!newPOA) {
+        throw new Error('Failed to create POA: No data returned');
+      }
       const normalized = normalizeId(newPOA);
-      // Normalize actividades
-      if (normalized.actividades) {
+      // Ensure actividades is always an array
+      if (!normalized.actividades) {
+        normalized.actividades = [];
+      } else {
         normalized.actividades = normalized.actividades.map(a => normalizeId(a));
       }
       this.poas.push(normalized);
       this.notify();
       return normalized;
     } catch (error) {
+      console.error('Error creating POA:', error);
       throw error;
     }
   }
@@ -107,7 +151,10 @@ export class POAViewModel {
     try {
       const updatedPOA = await poaService.addActividad(poaId, actividad);
       const normalized = normalizeId(updatedPOA);
-      if (normalized.actividades) {
+      // Ensure actividades is always an array
+      if (!normalized.actividades) {
+        normalized.actividades = [];
+      } else {
         normalized.actividades = normalized.actividades.map(a => normalizeId(a));
       }
       const index = this.poas.findIndex(p => extractId(p) === poaId);
@@ -116,6 +163,9 @@ export class POAViewModel {
         this.notify();
       }
       // Return the last actividad (the one we just added)
+      if (normalized.actividades.length === 0) {
+        throw new Error('No actividad was added to the POA');
+      }
       const newActividad = normalized.actividades[normalized.actividades.length - 1];
       return newActividad;
     } catch (error) {
@@ -127,7 +177,10 @@ export class POAViewModel {
     try {
       const updatedPOA = await poaService.updateActividad(poaId, actividadId, actividad);
       const normalized = normalizeId(updatedPOA);
-      if (normalized.actividades) {
+      // Ensure actividades is always an array
+      if (!normalized.actividades) {
+        normalized.actividades = [];
+      } else {
         normalized.actividades = normalized.actividades.map(a => normalizeId(a));
       }
       const index = this.poas.findIndex(p => extractId(p) === poaId);
@@ -142,10 +195,17 @@ export class POAViewModel {
 
   async deleteActividad(poaId: string, actividadId: string): Promise<void> {
     try {
-      await poaService.deleteActividad(poaId, actividadId);
-      const poa = this.poas.find(p => extractId(p) === poaId);
-      if (poa) {
-        poa.actividades = poa.actividades.filter(a => extractId(a) !== actividadId);
+      const updatedPOA = await poaService.deleteActividad(poaId, actividadId);
+      const normalized = normalizeId(updatedPOA);
+      // Ensure actividades is always an array
+      if (!normalized.actividades) {
+        normalized.actividades = [];
+      } else {
+        normalized.actividades = normalized.actividades.map(a => normalizeId(a));
+      }
+      const index = this.poas.findIndex(p => extractId(p) === poaId);
+      if (index !== -1) {
+        this.poas[index] = normalized;
         this.notify();
       }
     } catch (error) {
@@ -161,7 +221,10 @@ export class POAViewModel {
     try {
       const updatedPOA = await poaService.update(poaId, poaData);
       const normalized = normalizeId(updatedPOA);
-      if (normalized.actividades) {
+      // Ensure actividades is always an array
+      if (!normalized.actividades) {
+        normalized.actividades = [];
+      } else {
         normalized.actividades = normalized.actividades.map(a => normalizeId(a));
       }
       const index = this.poas.findIndex(p => extractId(p) === poaId);
@@ -175,34 +238,40 @@ export class POAViewModel {
   }
 
   // Area management methods
-  createArea(area: Omit<Area, 'id'>): Area {
-    const newArea: Area = {
-      ...area,
-      id: Date.now().toString(),
-    };
-    this.areas.push(newArea);
-    this.notify();
-    return newArea;
+  async createArea(area: Omit<Area, 'id' | '_id'>): Promise<Area> {
+    try {
+      const newArea = await areaService.create(area);
+      const normalized = normalizeId(newArea);
+      this.areas.push(normalized);
+      this.notify();
+      return normalized;
+    } catch (error) {
+      throw error;
+    }
   }
 
-  updateArea(areaId: string, areaData: Partial<Omit<Area, 'id'>>): void {
-    const area = this.areas.find(a => a.id === areaId);
-    if (!area) {
-      throw new Error('Area not found');
+  async updateArea(areaId: string, areaData: Partial<Omit<Area, 'id' | '_id'>>): Promise<void> {
+    try {
+      const updatedArea = await areaService.update(areaId, areaData);
+      const normalized = normalizeId(updatedArea);
+      const index = this.areas.findIndex(a => extractId(a) === areaId);
+      if (index !== -1) {
+        this.areas[index] = normalized;
+        this.notify();
+      }
+    } catch (error) {
+      throw error;
     }
-
-    Object.assign(area, areaData);
-    this.notify();
   }
 
-  deleteArea(areaId: string): void {
-    const areaIndex = this.areas.findIndex(a => a.id === areaId);
-    if (areaIndex === -1) {
-      throw new Error('Area not found');
+  async deleteArea(areaId: string): Promise<void> {
+    try {
+      await areaService.delete(areaId);
+      this.areas = this.areas.filter(a => extractId(a) !== areaId);
+      this.notify();
+    } catch (error) {
+      throw error;
     }
-
-    this.areas.splice(areaIndex, 1);
-    this.notify();
   }
 
   getArea(areaId: string): Area | undefined {

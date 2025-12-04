@@ -1,7 +1,5 @@
 import type { AuthState } from '../models/User';
 import { authService } from '../services/authService';
-import { apiClient } from '../services/api';
-
 export class AuthViewModel {
   private authState: AuthState = {
     isAuthenticated: false,
@@ -9,12 +7,39 @@ export class AuthViewModel {
   };
 
   private listeners: Array<(state: AuthState) => void> = [];
+  private isInitializing: boolean = true;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor() {
-    // Check if user is already logged in (from token)
-    if (authService.isAuthenticated()) {
-      this.loadCurrentUser();
+    // Start initialization immediately
+    this.startInitialization();
+  }
+
+  private startInitialization(): void {
+    if (this.initializationPromise) {
+      return; // Already initializing
     }
+
+    this.isInitializing = true;
+    this.initializationPromise = (async () => {
+      // Check if user is already logged in (from token)
+      if (authService.isAuthenticated()) {
+        await this.loadCurrentUser();
+      }
+      this.isInitializing = false;
+      this.notify();
+    })();
+  }
+
+  async initialize(): Promise<void> {
+    // If already initialized or initialization in progress, return existing promise
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    // Start new initialization if not already started
+    this.startInitialization();
+    return this.initializationPromise!;
   }
 
   private async loadCurrentUser() {
@@ -26,9 +51,15 @@ export class AuthViewModel {
       };
       this.notify();
     } catch (error) {
+      console.error('Failed to restore session:', error);
       this.authState = { isAuthenticated: false, user: null };
       authService.logout();
+      this.notify();
     }
+  }
+
+  isInitializingState(): boolean {
+    return this.isInitializing;
   }
 
   subscribe(listener: (state: AuthState) => void): () => void {

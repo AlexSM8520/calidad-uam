@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { lineaViewModel } from '../../viewmodels/LineaViewModel';
 import type { Linea as LineaType } from '../../models/Linea';
 import { LineaForm } from '../../components/LineaForm/LineaForm';
+import { extractId } from '../../utils/modelHelpers';
 import './Linea.css';
 
 export const Linea = () => {
@@ -10,7 +11,9 @@ export const Linea = () => {
 
   useEffect(() => {
     const unsubscribe = lineaViewModel.subscribe(() => {
-      setLineas(lineaViewModel.getLineas());
+      const currentLineas = lineaViewModel.getLineas();
+      console.log('Linea component - lineas updated:', currentLineas);
+      setLineas(currentLineas);
       setIsFormOpen(lineaViewModel.getIsFormOpen());
     });
 
@@ -65,35 +68,59 @@ export const Linea = () => {
                 </td>
               </tr>
             ) : (
-              lineas.map((linea) => (
-                <tr key={linea.id}>
-                  <td className="nombre-cell">{linea.nombre}</td>
-                  <td className="descripcion-cell">{linea.descripcion}</td>
-                  <td>{linea.duracion} meses</td>
-                  <td>{formatDate(linea.fechaInicio)}</td>
-                  <td>{formatDate(linea.fechaFin)}</td>
-                  <td>
-                    <div className="color-indicator">
-                      <span
-                        className="color-dot"
-                        style={{ backgroundColor: linea.color }}
-                      ></span>
-                      <span className="color-code">{linea.color}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="plan-badge">{linea.plan}</span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn-delete"
-                      onClick={() => lineaViewModel.deleteLinea(linea.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              ))
+              lineas
+                .filter((linea) => {
+                  // Filter out undefined/null or incomplete lineas
+                  if (!linea) {
+                    console.warn('Found null/undefined linea');
+                    return false;
+                  }
+                  if (!linea.nombre) {
+                    console.warn('Found linea without nombre:', linea);
+                    return false;
+                  }
+                  return true;
+                })
+                .map((linea) => {
+                  const lineaId = extractId(linea);
+                  return (
+                    <tr key={lineaId}>
+                      <td className="nombre-cell">{linea.nombre}</td>
+                    <td className="descripcion-cell">{linea.descripcion}</td>
+                    <td>{linea.duracion} meses</td>
+                    <td>{formatDate(linea.fechaInicio)}</td>
+                    <td>{formatDate(linea.fechaFin)}</td>
+                    <td>
+                      <div className="color-indicator">
+                        <span
+                          className="color-dot"
+                          style={{ backgroundColor: linea.color }}
+                        ></span>
+                        <span className="color-code">{linea.color}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="plan-badge">{linea.plan}</span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn-delete"
+                        onClick={async () => {
+                          if (confirm('¿Está seguro de eliminar esta línea?')) {
+                            try {
+                              await lineaViewModel.deleteLinea(lineaId);
+                            } catch (error) {
+                              alert(error instanceof Error ? error.message : 'Error al eliminar la línea');
+                            }
+                          }
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

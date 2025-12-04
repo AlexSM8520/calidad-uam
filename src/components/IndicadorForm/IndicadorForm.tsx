@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { indicadorViewModel } from '../../viewmodels/IndicadorViewModel';
 import { lineaViewModel } from '../../viewmodels/LineaViewModel';
 import { objetivoViewModel } from '../../viewmodels/ObjetivoViewModel';
+import { extractId } from '../../utils/modelHelpers';
 import type { Linea as LineaType } from '../../models/Linea';
 import type { Objetivo as ObjetivoType } from '../../models/Objetivo';
 import type { Frecuencia, EstadoIndicador } from '../../models/Indicador';
@@ -44,7 +45,12 @@ export const IndicadorForm = ({ onClose }: IndicadorFormProps) => {
 
   const getObjetivosByLinea = (): ObjetivoType[] => {
     if (!lineaId) return [];
-    return objetivos.filter(obj => obj.lineaId === lineaId);
+    return objetivos.filter(obj => {
+      if (!obj) return false;
+      // Handle lineaId as string or object - use extractId helper
+      const objLineaId = extractId(obj.lineaId);
+      return objLineaId === lineaId;
+    });
   };
 
   const validateForm = (): boolean => {
@@ -86,22 +92,23 @@ export const IndicadorForm = ({ onClose }: IndicadorFormProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    indicadorViewModel.addIndicador({
-      lineaId,
-      objetivoId,
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      calculo: calculo.trim(),
-      codigo: codigo.trim().toUpperCase(),
-      frecuencia,
-      unidad: unidad.trim(),
+    try {
+      await indicadorViewModel.addIndicador({
+        lineaId,
+        objetivoId,
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim(),
+        calculo: calculo.trim(),
+        codigo: codigo.trim().toUpperCase(),
+        frecuencia,
+        unidad: unidad.trim(),
       meta,
       estado,
     });
@@ -119,7 +126,12 @@ export const IndicadorForm = ({ onClose }: IndicadorFormProps) => {
     setEstado('Activo');
     setErrors({});
 
-    onClose();
+      // Close modal after successful creation
+      indicadorViewModel.closeForm();
+      onClose();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al crear el indicador');
+    }
   };
 
   const getSelectedLinea = (): LineaType | null => {

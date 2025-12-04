@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LoginViewModel } from '../../viewmodels/LoginViewModel';
-import { authViewModel } from '../../viewmodels/AuthViewModel';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
 import './Login.css';
-
-const loginViewModel = new LoginViewModel();
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -12,27 +9,31 @@ export const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, login } = useAuthStore();
 
   useEffect(() => {
-    // Subscribe to view model changes
-    const unsubscribe = loginViewModel.subscribe(() => {
-      setError(loginViewModel.getError());
-      setIsLoading(loginViewModel.getIsLoading());
-    });
-
     // Check if already authenticated
-    if (authViewModel.isAuthenticated()) {
+    if (isAuthenticated) {
       navigate('/home');
     }
-
-    return unsubscribe;
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await loginViewModel.handleLogin(username, password);
-    if (success) {
-      navigate('/home');
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const success = await login(username, password);
+      if (success) {
+        navigate('/home');
+      } else {
+        setError('Credenciales inválidas');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -71,6 +72,11 @@ export const Login = () => {
           </button>
           <div className="login-hint">
             <small>Default: Admin / 123</small>
+          </div>
+          <div className="login-footer">
+            <p>
+              ¿No tienes una cuenta? <Link to="/register">Regístrate</Link>
+            </p>
           </div>
         </form>
       </div>

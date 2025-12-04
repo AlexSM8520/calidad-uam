@@ -3,6 +3,7 @@ import { userViewModel } from '../../viewmodels/UserViewModel';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
 import { UserForm } from '../../components/UserForm/UserForm';
 import type { User as UserType } from '../../models/User';
+import { extractId } from '../../utils/modelHelpers';
 import './Users.css';
 
 export const Users = () => {
@@ -13,8 +14,11 @@ export const Users = () => {
   const [filterActivo, setFilterActivo] = useState<string>('');
 
   useEffect(() => {
+    console.log('Users component: Setting up subscription');
     const unsubscribe = userViewModel.subscribe(() => {
-      setUsers(userViewModel.getUsers());
+      const loadedUsers = userViewModel.getUsers();
+      console.log('Users component: Users from ViewModel:', loadedUsers);
+      setUsers(loadedUsers);
     });
     return unsubscribe;
   }, []);
@@ -29,12 +33,15 @@ export const Users = () => {
     setEditingUser(undefined);
   };
 
-  const handleSaveUser = (userData: Omit<UserType, 'id'>) => {
+  const handleSaveUser = async (userData: Omit<UserType, 'id'>) => {
     try {
       if (editingUser) {
-        userViewModel.updateUser(editingUser.id, userData);
+        const userId = extractId(editingUser);
+        if (userId) {
+          await userViewModel.updateUser(userId, userData);
+        }
       } else {
-        userViewModel.createUser(userData);
+        await userViewModel.createUser(userData);
       }
       handleCloseForm();
     } catch (error) {
@@ -47,25 +54,30 @@ export const Users = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     if (confirm('¿Está seguro de eliminar este usuario?')) {
       try {
-        userViewModel.deleteUser(userId);
+        await userViewModel.deleteUser(userId);
       } catch (error) {
         alert(error instanceof Error ? error.message : 'Error al eliminar el usuario');
       }
     }
   };
 
-  const handleToggleActivo = (user: UserType) => {
+  const handleToggleActivo = async (user: UserType) => {
     try {
-      userViewModel.updateUser(user.id, { activo: !user.activo });
+      const userId = extractId(user);
+      if (userId) {
+        await userViewModel.updateUser(userId, { activo: !user.activo });
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error al actualizar el estado del usuario');
     }
   };
 
   const filteredUsers = users.filter(user => {
+    // Filter out invalid users (must have username)
+    if (!user || !user.username) return false;
     if (filterRole && user.rol !== filterRole) return false;
     if (filterActivo === 'activo' && !user.activo) return false;
     if (filterActivo === 'inactivo' && user.activo) return false;
@@ -153,8 +165,10 @@ export const Users = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
+              {filteredUsers.map((user) => {
+                const userId = extractId(user);
+                return (
+                <tr key={userId || user.username}>
                   <td className="username-cell">{user.username}</td>
                   <td className="name-cell">
                     {user.nombre || user.apellido
@@ -191,14 +205,18 @@ export const Users = () => {
                       </button>
                       <button
                         className="btn-delete"
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => {
+                          const userId = extractId(user);
+                          if (userId) handleDeleteUser(userId);
+                        }}
                       >
                         Eliminar
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

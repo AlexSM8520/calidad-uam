@@ -39,10 +39,29 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    // Endpoints públicos que no requieren autenticación
+    // According to API docs: /auth/login, /auth/register, /facultades, /carreras, /areas, /lineas, /objetivos, /indicadores (read only)
+    const publicEndpoints = [
+      '/auth/login', 
+      '/auth/register',
+      '/facultades',
+      '/carreras',
+      '/areas',
+      '/lineas',
+      '/objetivos',
+      '/indicadores'
+    ];
+    const isPublicEndpoint = publicEndpoints.some(ep => endpoint.startsWith(ep));
+
+    // Si no es un endpoint público y no hay token, rechazar la petición
+    if (!isPublicEndpoint && !this.token) {
+      throw new Error('No autenticado. Por favor, inicia sesión.');
+    }
+
     const url = `${this.baseURL}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string> || {}),
     };
 
     if (this.token) {
@@ -65,7 +84,29 @@ class ApiClient {
           throw new Error('Unauthorized');
         }
 
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Extract error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        if (data) {
+          if (data.message) {
+            errorMessage = data.message;
+          } else if (data.error) {
+            errorMessage = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+          } else if (typeof data === 'string') {
+            errorMessage = data;
+          } else {
+            // Try to extract validation errors
+            const errors = data.errors || data.validationErrors;
+            if (errors && Array.isArray(errors)) {
+              errorMessage = errors.map((e: any) => e.message || e.msg || e).join(', ');
+            } else if (errors && typeof errors === 'object') {
+              errorMessage = Object.entries(errors)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ');
+            }
+          }
+        }
+
+        throw new Error(errorMessage);
       }
 
       return data;

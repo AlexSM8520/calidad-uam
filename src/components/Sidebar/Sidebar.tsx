@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { authViewModel } from '../../viewmodels/AuthViewModel';
+import { useAuthStore } from '../../stores/authStore';
 import { UAMLogo } from '../UAMLogo/UAMLogo';
 import './Sidebar.css';
 
@@ -17,22 +17,24 @@ export const Sidebar = () => {
     carreraArea: false,
   });
 
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
   // Auto-expand sections based on current route (only for admin)
   useEffect(() => {
-    const user = authViewModel.getAuthState().user;
     if (user?.rol !== 'Administrador') {
       return;
     }
     const path = location.pathname;
     setExpandedSections({
       lineaEstrategica: path === '/linea' || path === '/objetivos' || path === '/indicadores',
-      poa: path === '/create-poa' || path === '/poas' || path.startsWith('/edit-poa/'),
+      poa: path === '/create-poa' || path === '/poas' || path.startsWith('/edit-poa/') || path === '/cargar-evidencias',
       carreraArea: path === '/area' || path === '/carrera' || path === '/facultades',
     });
-  }, [location.pathname]);
+  }, [location.pathname, user]);
 
   const handleLogout = () => {
-    authViewModel.logout();
+    logout();
     navigate('/login');
   };
 
@@ -44,7 +46,6 @@ export const Sidebar = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
-  const user = authViewModel.getAuthState().user;
   const isAdmin = user?.rol === 'Administrador';
   const isUsuario = user?.rol === 'Usuario';
 
@@ -135,6 +136,12 @@ export const Sidebar = () => {
                 onClick={() => navigate('/poas')}
               >
                 Lista de POAs
+              </button>
+              <button
+                className={`nav-item ${isActive('/cargar-evidencias') ? 'active' : ''}`}
+                onClick={() => navigate('/cargar-evidencias')}
+              >
+                Cargar Evidencias
               </button>
             </div>
           )}

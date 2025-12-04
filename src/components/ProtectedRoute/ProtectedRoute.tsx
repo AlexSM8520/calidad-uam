@@ -1,25 +1,32 @@
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { authViewModel } from '../../viewmodels/AuthViewModel';
-import type { AuthState } from '../../models/User';
+import { useAuthStore } from '../../stores/authStore';
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [authState, setAuthState] = useState<AuthState>(authViewModel.getAuthState());
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitializing = useAuthStore((state) => state.isInitializing);
 
-  useEffect(() => {
-    const unsubscribe = authViewModel.subscribe((state) => {
-      setAuthState(state);
-    });
+  // Wait for initialization to complete
+  if (isInitializing) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px',
+        color: 'var(--color-text-secondary)'
+      }}>
+        Cargando...
+      </div>
+    );
+  }
 
-    return unsubscribe;
-  }, []);
-
-  if (!authState.isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

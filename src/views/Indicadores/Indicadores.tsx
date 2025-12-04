@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { indicadorViewModel } from '../../viewmodels/IndicadorViewModel';
 import { lineaViewModel } from '../../viewmodels/LineaViewModel';
 import { objetivoViewModel } from '../../viewmodels/ObjetivoViewModel';
+import { extractId } from '../../utils/modelHelpers';
 import type { Indicador as IndicadorType } from '../../models/Indicador';
 import type { Linea as LineaType } from '../../models/Linea';
 import type { Objetivo as ObjetivoType } from '../../models/Objetivo';
@@ -67,7 +68,12 @@ export const Indicadores = () => {
 
   const getObjetivosByLinea = (): ObjetivoType[] => {
     if (!selectedLineaId) return [];
-    return objetivos.filter(obj => obj.lineaId === selectedLineaId);
+    return objetivos.filter(obj => {
+      if (!obj) return false;
+      // Handle lineaId as string or object - use extractId helper
+      const objLineaId = extractId(obj.lineaId);
+      return objLineaId === selectedLineaId;
+    });
   };
 
   const selectedLinea = getSelectedLinea();
@@ -196,34 +202,47 @@ export const Indicadores = () => {
                   </td>
                 </tr>
               ) : (
-                indicadores.map((indicador) => (
-                  <tr key={indicador.id}>
-                    <td className="codigo-cell">
-                      <span className="codigo-badge">{indicador.codigo}</span>
-                    </td>
-                    <td className="nombre-cell">{indicador.nombre}</td>
-                    <td className="descripcion-cell">{indicador.descripcion}</td>
-                    <td className="calculo-cell">{indicador.calculo}</td>
-                    <td>{indicador.frecuencia}</td>
-                    <td>{indicador.unidad}</td>
-                    <td className="meta-cell">
-                      {indicador.meta} {indicador.unidad}
-                    </td>
-                    <td>
-                      <span className={`estado-badge ${getEstadoBadgeClass(indicador.estado)}`}>
-                        {indicador.estado}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="btn-delete"
-                        onClick={() => indicadorViewModel.deleteIndicador(indicador.id)}
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                indicadores
+                  .filter((indicador) => indicador && indicador.nombre) // Filter out undefined/null or incomplete indicadores
+                  .map((indicador) => {
+                    const indicadorId = extractId(indicador);
+                    return (
+                      <tr key={indicadorId}>
+                        <td className="codigo-cell">
+                          <span className="codigo-badge">{indicador.codigo}</span>
+                        </td>
+                        <td className="nombre-cell">{indicador.nombre}</td>
+                        <td className="descripcion-cell">{indicador.descripcion}</td>
+                        <td className="calculo-cell">{indicador.calculo}</td>
+                        <td>{indicador.frecuencia}</td>
+                        <td>{indicador.unidad}</td>
+                        <td className="meta-cell">
+                          {indicador.meta} {indicador.unidad}
+                        </td>
+                        <td>
+                          <span className={`estado-badge ${getEstadoBadgeClass(indicador.estado)}`}>
+                            {indicador.estado}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn-delete"
+                            onClick={async () => {
+                              if (confirm('¿Está seguro de eliminar este indicador?')) {
+                                try {
+                                  await indicadorViewModel.deleteIndicador(indicadorId);
+                                } catch (error) {
+                                  alert(error instanceof Error ? error.message : 'Error al eliminar el indicador');
+                                }
+                              }
+                            }}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>

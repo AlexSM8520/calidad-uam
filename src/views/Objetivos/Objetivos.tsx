@@ -124,7 +124,16 @@ export const Objetivos = () => {
                     <td>
                       <button
                         className="btn-delete"
-                        onClick={() => objetivoViewModel.deleteObjetivo(objetivo.id)}
+                        onClick={async () => {
+                          if (confirm('¿Está seguro de eliminar este objetivo?')) {
+                            try {
+                              const objetivoId = objetivo.id || objetivo._id || '';
+                              await objetivoViewModel.deleteObjetivo(objetivoId);
+                            } catch (error) {
+                              alert(error instanceof Error ? error.message : 'Error al eliminar el objetivo');
+                            }
+                          }
+                        }}
                       >
                         Eliminar
                       </button>

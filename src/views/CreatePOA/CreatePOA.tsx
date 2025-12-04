@@ -55,7 +55,8 @@ export const CreatePOA = () => {
       if (poaId) {
         const poa = poaViewModel.getPOA(poaId);
         if (poa) {
-          setActividades(poa.actividades);
+          // Ensure actividades is always an array
+          setActividades(poa.actividades || []);
         }
       }
     });
@@ -171,13 +172,6 @@ export const CreatePOA = () => {
       default:
         return 'estado-pendiente';
     }
-  };
-
-  // Helper para obtener el ID de un campo que puede ser string o objeto
-  const getId = (idOrObj: string | { _id?: string; id?: string } | undefined): string => {
-    if (!idOrObj) return '';
-    if (typeof idOrObj === 'string') return idOrObj;
-    return idOrObj._id || idOrObj.id || '';
   };
 
   const getLineaNombre = (lineaId: string | { _id: string; nombre: string }): string => {

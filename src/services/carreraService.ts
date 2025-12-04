@@ -6,7 +6,15 @@ export const carreraService = {
     const url = facultad ? `/carreras?facultad=${encodeURIComponent(facultad)}` : '/carreras';
     const response = await apiClient.get<{ data: Carrera[]; count: number }>(url);
     if (response.success && response.data) {
-      return (response.data as any).data || [];
+      // Handle different response structures
+      const carreras = (response.data as any).data || response.data;
+      if (Array.isArray(carreras)) {
+        return carreras;
+      }
+      // If response.data is the array directly
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
     }
     return [];
   },
@@ -22,7 +30,17 @@ export const carreraService = {
   async create(carreraData: Omit<Carrera, 'id'>): Promise<Carrera> {
     const response = await apiClient.post<{ data: Carrera }>('/carreras', carreraData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const carrera = (response.data as any).data || response.data;
+      if (!carrera) {
+        throw new Error('No carrera data returned from server');
+      }
+      // Ensure all required fields are present
+      if (!carrera.nombre || !carrera.facultad) {
+        console.error('Incomplete carrera data:', carrera);
+        throw new Error('Incomplete carrera data returned from server');
+      }
+      return carrera;
     }
     throw new Error(response.message || 'Failed to create carrera');
   },
@@ -30,7 +48,12 @@ export const carreraService = {
   async update(id: string, carreraData: Partial<Omit<Carrera, 'id'>>): Promise<Carrera> {
     const response = await apiClient.put<{ data: Carrera }>(`/carreras/${id}`, carreraData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const carrera = (response.data as any).data || response.data;
+      if (!carrera) {
+        throw new Error('No carrera data returned from server');
+      }
+      return carrera;
     }
     throw new Error(response.message || 'Failed to update carrera');
   },

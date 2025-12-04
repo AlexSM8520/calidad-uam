@@ -48,28 +48,34 @@ export const ObjetivoForm = ({ onClose }: ObjetivoFormProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    objetivoViewModel.addObjetivo({
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      codigoReferencia: codigoReferencia.trim().toUpperCase(),
-      lineaId,
-    });
+    try {
+      await objetivoViewModel.addObjetivo({
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim(),
+        codigoReferencia: codigoReferencia.trim().toUpperCase(),
+        lineaId,
+      });
 
-    // Reset form
-    setNombre('');
-    setDescripcion('');
-    setCodigoReferencia('');
-    setLineaId('');
-    setErrors({});
+      // Reset form
+      setNombre('');
+      setDescripcion('');
+      setCodigoReferencia('');
+      setLineaId('');
+      setErrors({});
 
-    onClose();
+      // Close modal after successful creation
+      objetivoViewModel.closeForm();
+      onClose();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al crear el objetivo');
+    }
   };
 
   const getSelectedLinea = (): LineaType | null => {

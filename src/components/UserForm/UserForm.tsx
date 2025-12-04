@@ -65,10 +65,9 @@ export const UserForm = ({ onClose, onSave, user }: UserFormProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      // If editing and password is empty, don't include it
+      // Build user data according to API requirements
       const userData: Omit<User, 'id'> = {
         username: formData.username,
-        password: formData.password || user?.password || '',
         email: formData.email || undefined,
         nombre: formData.nombre || undefined,
         apellido: formData.apellido || undefined,
@@ -77,6 +76,17 @@ export const UserForm = ({ onClose, onSave, user }: UserFormProps) => {
         carreraId: formData.rol === 'Usuario' && formData.tipoRelacion === 'carrera' ? formData.carreraId : undefined,
         areaId: formData.rol === 'Usuario' && formData.tipoRelacion === 'area' ? formData.areaId : undefined,
       };
+
+      // Password is required for new users, optional for updates
+      if (!user) {
+        // Creating new user - password is required
+        userData.password = formData.password;
+      } else if (formData.password.trim()) {
+        // Updating user - only include password if it was changed
+        userData.password = formData.password;
+      }
+      // If editing and password is empty, don't include it in the update
+
       onSave(userData);
       onClose();
     }

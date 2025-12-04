@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
 import { CarreraForm } from '../../components/CarreraForm/CarreraForm';
 import type { Carrera as CarreraType } from '../../models/Carrera';
+import { extractId } from '../../utils/modelHelpers';
 import './Carrera.css';
 
 export const Carrera = () => {
@@ -47,13 +48,20 @@ export const Carrera = () => {
     setEditingCarrera(undefined);
   };
 
-  const handleSaveCarrera = (carreraData: Omit<CarreraType, 'id'>) => {
-    if (editingCarrera) {
-      poaViewModel.updateCarrera(editingCarrera.id, carreraData);
-    } else {
-      poaViewModel.createCarrera(carreraData);
+  const handleSaveCarrera = async (carreraData: Omit<CarreraType, 'id'>) => {
+    try {
+      if (editingCarrera) {
+        const carreraId = extractId(editingCarrera);
+        if (carreraId) {
+          await poaViewModel.updateCarrera(carreraId, carreraData);
+        }
+      } else {
+        await poaViewModel.createCarrera(carreraData);
+      }
+      handleCloseForm();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al guardar la carrera');
     }
-    handleCloseForm();
   };
 
   const handleEditCarrera = (carrera: CarreraType) => {
@@ -61,12 +69,12 @@ export const Carrera = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteCarrera = (carreraId: string) => {
+  const handleDeleteCarrera = async (carreraId: string) => {
     if (confirm('¿Está seguro de eliminar esta carrera?')) {
       try {
-        poaViewModel.deleteCarrera(carreraId);
+        await poaViewModel.deleteCarrera(carreraId);
       } catch (error) {
-        alert('Error al eliminar la carrera. Puede estar siendo utilizada en algún POA.');
+        alert(error instanceof Error ? error.message : 'Error al eliminar la carrera. Puede estar siendo utilizada en algún POA.');
       }
     }
   };
@@ -136,7 +144,10 @@ export const Carrera = () => {
                       </button>
                       <button
                         className="btn-delete"
-                        onClick={() => handleDeleteCarrera(carrera.id)}
+                        onClick={() => {
+                          const carreraId = extractId(carrera);
+                          if (carreraId) handleDeleteCarrera(carreraId);
+                        }}
                       >
                         Eliminar
                       </button>

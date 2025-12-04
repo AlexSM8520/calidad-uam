@@ -30,9 +30,9 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
     responsable: actividad?.responsable || '',
     estado: actividad?.estado || 'Pendiente' as Actividad['estado'],
     frecuencia: actividad?.frecuencia || 'Mensual' as FrecuenciaReporte,
-    lineaId: typeof actividad?.lineaId === 'string' ? actividad.lineaId : (actividad?.lineaId?._id || actividad?.lineaId?.id || ''),
-    objetivoId: typeof actividad?.objetivoId === 'string' ? actividad.objetivoId : (actividad?.objetivoId?._id || actividad?.objetivoId?.id || ''),
-    indicadorId: typeof actividad?.indicadorId === 'string' ? actividad.indicadorId : (actividad?.indicadorId?._id || actividad?.indicadorId?.id || ''),
+    lineaId: extractId(actividad?.lineaId),
+    objetivoId: extractId(actividad?.objetivoId),
+    indicadorId: extractId(actividad?.indicadorId),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
 import type { POA } from '../../models/POA';
+import { extractId } from '../../utils/modelHelpers';
 import './POAs.css';
 
 export const POAs = () => {
@@ -29,6 +30,30 @@ export const POAs = () => {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const getAreaNombre = (areaId: POA['areaId']): string => {
+    if (!areaId) return 'N/A';
+    // If areaId is an object with nombre property
+    if (typeof areaId === 'object' && 'nombre' in areaId) {
+      return areaId.nombre;
+    }
+    // If areaId is a string, find it in the areas list
+    const areaIdStr = typeof areaId === 'string' ? areaId : extractId(areaId);
+    const area = poaViewModel.getAreas().find(a => extractId(a) === areaIdStr);
+    return area?.nombre || 'N/A';
+  };
+
+  const getCarreraNombre = (carreraId: POA['carreraId']): string => {
+    if (!carreraId) return 'N/A';
+    // If carreraId is an object with nombre property
+    if (typeof carreraId === 'object' && 'nombre' in carreraId) {
+      return carreraId.nombre;
+    }
+    // If carreraId is a string, find it in the carreras list
+    const carreraIdStr = typeof carreraId === 'string' ? carreraId : extractId(carreraId);
+    const carrera = poaViewModel.getCarreras().find(c => extractId(c) === carreraIdStr);
+    return carrera?.nombre || 'N/A';
   };
 
   return (
@@ -66,8 +91,8 @@ export const POAs = () => {
                   </td>
                   <td className="nombre-cell">
                     {poa.tipo === 'area'
-                      ? poaViewModel.getAreas().find(a => a.id === poa.areaId)?.nombre || 'N/A'
-                      : poaViewModel.getCarreras().find(c => c.id === poa.carreraId)?.nombre || 'N/A'}
+                      ? getAreaNombre(poa.areaId)
+                      : getCarreraNombre(poa.carreraId)}
                   </td>
                   <td>{poa.periodo}</td>
                   <td>{formatDate(poa.fechaInicio)}</td>
@@ -80,7 +105,10 @@ export const POAs = () => {
                   <td>
                     <button
                       className="btn-edit"
-                      onClick={() => handleEdit(poa.id)}
+                      onClick={() => {
+                        const poaId = extractId(poa);
+                        if (poaId) handleEdit(poaId);
+                      }}
                     >
                       Editar
                     </button>

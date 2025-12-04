@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Layout } from './components/Layout/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute';
 import { Login } from './views/Login/Login';
+import { Register } from './views/Register/Register';
 import { Home } from './views/Home/Home';
 import { Linea } from './views/Linea/Linea';
 import { Objetivos } from './views/Objetivos/Objetivos';
@@ -16,27 +17,44 @@ import { Facultades } from './views/Facultades/Facultades';
 import { Users } from './views/Users/Users';
 import { Dashboard } from './views/Dashboard/Dashboard';
 import { UserPOAs } from './views/UserPOAs/UserPOAs';
+import { CargarEvidencias } from './views/CargarEvidencias/CargarEvidencias';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute/RoleProtectedRoute';
-import { authViewModel } from './viewmodels/AuthViewModel';
-import type { AuthState } from './models/User';
+import { useAuthStore } from './stores/authStore';
 import './App.css';
 
 function App() {
-  const [authState, setAuthState] = useState<AuthState>(authViewModel.getAuthState());
+  const { isAuthenticated, isInitializing, initialize } = useAuthStore();
 
   useEffect(() => {
-    const unsubscribe = authViewModel.subscribe((state) => {
-      setAuthState(state);
-    });
+    // Initialize after component mounts
+    // Zustand persist will have rehydrated by this point
+    initialize();
+  }, [initialize]);
 
-    return unsubscribe;
-  }, []);
+  // Show loading state while initializing session
+  if (isInitializing) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px',
+        color: 'var(--color-text-secondary)'
+      }}>
+        Cargando...
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={
-          authState.isAuthenticated ? <Navigate to="/home" replace /> : <Login />
+          isAuthenticated ? <Navigate to="/home" replace /> : <Login />
+        } />
+        <Route path="/register" element={
+          isAuthenticated ? <Navigate to="/home" replace /> : <Register />
         } />
         <Route path="/" element={
           <ProtectedRoute>
@@ -91,6 +109,13 @@ function App() {
           <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <POAs />
+            </Layout>
+          </RoleProtectedRoute>
+        } />
+        <Route path="/cargar-evidencias" element={
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
+            <Layout>
+              <CargarEvidencias />
             </Layout>
           </RoleProtectedRoute>
         } />

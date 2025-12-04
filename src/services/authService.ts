@@ -14,13 +14,20 @@ export interface LoginResponse {
 
 export const authService = {
   async login(username: string, password: string): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>('/auth/login', {
+    // Login endpoint returns token and user at root level, not in data
+    const response = await apiClient.post<any>('/auth/login', {
       username,
       password,
     });
 
-    if (response.success && response.data) {
-      const loginData = response.data as unknown as LoginResponse;
+    // According to API docs, login response structure is:
+    // { success: true, token: "...", user: {...} }
+    if (response.success && (response as any).token && (response as any).user) {
+      const loginData: LoginResponse = {
+        success: true,
+        token: (response as any).token,
+        user: (response as any).user,
+      };
       apiClient.setToken(loginData.token);
       return loginData;
     }
@@ -44,6 +51,33 @@ export const authService = {
 
   isAuthenticated(): boolean {
     return apiClient.getToken() !== null;
+  },
+
+  async register(userData: {
+    username: string;
+    password: string;
+    email?: string;
+    nombre?: string;
+    apellido?: string;
+    carreraId?: string;
+    areaId?: string;
+  }): Promise<LoginResponse> {
+    // Register endpoint returns token and user at root level, similar to login
+    const response = await apiClient.post<any>('/auth/register', userData);
+
+    // According to API docs, register response structure is:
+    // { success: true, token: "...", user: {...} }
+    if (response.success && (response as any).token && (response as any).user) {
+      const registerData: LoginResponse = {
+        success: true,
+        token: (response as any).token,
+        user: (response as any).user,
+      };
+      apiClient.setToken(registerData.token);
+      return registerData;
+    }
+
+    throw new Error(response.message || 'Error al registrar el usuario');
   },
 };
 

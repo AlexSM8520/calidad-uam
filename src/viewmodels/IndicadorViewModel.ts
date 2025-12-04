@@ -1,4 +1,7 @@
 import type { Indicador } from '../models/Indicador';
+import { indicadorService } from '../services/indicadorService';
+import { useAuthStore } from '../stores/authStore';
+import { normalizeArray, normalizeId, extractId } from '../utils/modelHelpers';
 
 export class IndicadorViewModel {
   private indicadores: Indicador[] = [];
@@ -6,106 +9,46 @@ export class IndicadorViewModel {
   private selectedObjetivoId: string | null = null;
   private isFormOpen: boolean = false;
   private listeners: Array<() => void> = [];
+  private dataLoaded: boolean = false;
 
   constructor() {
-    // Initialize with example data
-    // Indicadores para Linea Verde - Objetivo 1 (Reducir consumo energético)
-    this.indicadores = [
-      {
-        id: '1',
-        lineaId: '1',
-        objetivoId: '1',
-        nombre: 'Reducción porcentual de consumo energético',
-        descripcion: 'Porcentaje de reducción en el consumo de energía eléctrica comparado con el año anterior',
-        calculo: '(Consumo año anterior - Consumo año actual) / Consumo año anterior * 100',
-        codigo: 'LV-OBJ-001-IND-001',
-        frecuencia: 'Mensual',
-        unidad: '%',
-        meta: 30,
-        estado: 'Activo',
+    // Subscribe to auth changes and load data when authenticated
+    useAuthStore.subscribe(
+      (state) => state.isAuthenticated,
+      (isAuthenticated) => {
+        if (isAuthenticated && !this.dataLoaded) {
+          this.loadIndicadores();
+        } else if (!isAuthenticated) {
+          // Clear data when logged out
+          this.indicadores = [];
+          this.dataLoaded = false;
+          this.notify();
+        }
       },
-      {
-        id: '2',
-        lineaId: '1',
-        objetivoId: '1',
-        nombre: 'Consumo energético total en kWh',
-        descripcion: 'Consumo total de energía eléctrica en kilovatios hora',
-        calculo: 'Suma de lecturas de medidores eléctricos',
-        codigo: 'LV-OBJ-001-IND-002',
-        frecuencia: 'Mensual',
-        unidad: 'kWh',
-        meta: 50000,
-        estado: 'Activo',
-      },
-      // Indicadores para Linea Verde - Objetivo 2 (Reciclaje)
-      {
-        id: '3',
-        lineaId: '1',
-        objetivoId: '2',
-        nombre: 'Tasa de reciclaje',
-        descripcion: 'Porcentaje de residuos reciclados del total de residuos generados',
-        calculo: '(Residuos reciclados / Total residuos generados) * 100',
-        codigo: 'LV-OBJ-002-IND-001',
-        frecuencia: 'Mensual',
-        unidad: '%',
-        meta: 60,
-        estado: 'Activo',
-      },
-      // Indicadores para Linea de Innovación Tecnológica - Objetivo 4
-      {
-        id: '4',
-        lineaId: '2',
-        objetivoId: '4',
-        nombre: 'Porcentaje de procesos digitalizados',
-        descripcion: 'Porcentaje de procesos administrativos que han sido migrados a plataformas digitales',
-        calculo: '(Procesos digitalizados / Total procesos) * 100',
-        codigo: 'IT-OBJ-001-IND-001',
-        frecuencia: 'Trimestral',
-        unidad: '%',
-        meta: 80,
-        estado: 'Activo',
-      },
-      {
-        id: '5',
-        lineaId: '2',
-        objetivoId: '4',
-        nombre: 'Tiempo promedio de procesamiento',
-        descripcion: 'Tiempo promedio en días para completar procesos administrativos digitalizados',
-        calculo: 'Suma de tiempos de procesamiento / Número de procesos',
-        codigo: 'IT-OBJ-001-IND-002',
-        frecuencia: 'Mensual',
-        unidad: 'días',
-        meta: 3,
-        estado: 'Activo',
-      },
-      // Indicadores para Linea de Excelencia Académica - Objetivo 7
-      {
-        id: '6',
-        lineaId: '3',
-        objetivoId: '7',
-        nombre: 'Número de publicaciones indexadas',
-        descripcion: 'Cantidad de publicaciones en revistas indexadas en bases de datos internacionales',
-        calculo: 'Conteo de publicaciones indexadas',
-        codigo: 'EA-OBJ-001-IND-001',
-        frecuencia: 'Anual',
-        unidad: 'publicaciones',
-        meta: 120,
-        estado: 'Activo',
-      },
-      {
-        id: '7',
-        lineaId: '3',
-        objetivoId: '7',
-        nombre: 'Factor de impacto promedio',
-        descripcion: 'Factor de impacto promedio de las revistas donde se publican los artículos',
-        calculo: 'Suma de factores de impacto / Número de publicaciones',
-        codigo: 'EA-OBJ-001-IND-002',
-        frecuencia: 'Anual',
-        unidad: 'puntos',
-        meta: 2.5,
-        estado: 'Activo',
-      },
-    ];
+      { equalityFn: (a, b) => a === b }
+    );
+
+    // Load data if already authenticated
+    // Use setTimeout to ensure store is fully initialized
+    setTimeout(() => {
+      const authState = useAuthStore.getState();
+      if (authState.isAuthenticated && !this.dataLoaded) {
+        this.loadIndicadores();
+      }
+    }, 100);
+  }
+
+  private async loadIndicadores() {
+    try {
+      const indicadores = await indicadorService.getAll();
+      // Filter out any undefined/null indicadores before normalizing
+      const validIndicadores = indicadores.filter(ind => ind != null);
+      this.indicadores = normalizeArray(validIndicadores);
+      this.dataLoaded = true;
+      this.notify();
+    } catch (error) {
+      console.error('Error loading indicadores:', error);
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -126,11 +69,20 @@ export class IndicadorViewModel {
       return [];
     }
     if (this.selectedObjetivoId === null) {
-      return this.indicadores.filter(ind => ind.lineaId === this.selectedLineaId);
+      return this.indicadores.filter(ind => {
+        if (!ind) return false;
+        // Handle lineaId as string or object - use extractId helper
+        const indLineaId = extractId(ind.lineaId);
+        return indLineaId === this.selectedLineaId;
+      });
     }
-    return this.indicadores.filter(
-      ind => ind.lineaId === this.selectedLineaId && ind.objetivoId === this.selectedObjetivoId
-    );
+    return this.indicadores.filter(ind => {
+      if (!ind) return false;
+      // Handle lineaId and objetivoId as string or object - use extractId helper
+      const indLineaId = extractId(ind.lineaId);
+      const indObjetivoId = extractId(ind.objetivoId);
+      return indLineaId === this.selectedLineaId && indObjetivoId === this.selectedObjetivoId;
+    });
   }
 
   getAllIndicadores(): Indicador[] {
@@ -172,18 +124,34 @@ export class IndicadorViewModel {
     this.notify();
   }
 
-  addIndicador(indicador: Omit<Indicador, 'id'>): void {
-    const newIndicador: Indicador = {
-      ...indicador,
-      id: Date.now().toString(),
-    };
-    this.indicadores = [...this.indicadores, newIndicador];
-    this.notify();
+  async addIndicador(indicador: Omit<Indicador, 'id' | '_id'>): Promise<void> {
+    try {
+      const newIndicador = await indicadorService.create(indicador);
+      if (!newIndicador) {
+        throw new Error('Failed to create indicador: No data returned');
+      }
+      const normalized = normalizeId(newIndicador);
+      // Validate that normalized indicador has required fields
+      if (!normalized.nombre || !normalized.descripcion || !normalized.lineaId || !normalized.objetivoId) {
+        console.error('Invalid indicador returned from server:', normalized);
+        throw new Error('Invalid indicador data returned from server');
+      }
+      this.indicadores = [...this.indicadores, normalized];
+      this.notify();
+    } catch (error) {
+      console.error('Error adding indicador:', error);
+      throw error;
+    }
   }
 
-  deleteIndicador(id: string): void {
-    this.indicadores = this.indicadores.filter(ind => ind.id !== id);
-    this.notify();
+  async deleteIndicador(id: string): Promise<void> {
+    try {
+      await indicadorService.delete(id);
+      this.indicadores = this.indicadores.filter(ind => extractId(ind) !== id);
+      this.notify();
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

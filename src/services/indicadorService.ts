@@ -10,7 +10,15 @@ export const indicadorService = {
     
     const response = await apiClient.get<{ data: Indicador[]; count: number }>(url);
     if (response.success && response.data) {
-      return (response.data as any).data || [];
+      // Handle different response structures
+      const indicadores = (response.data as any).data || response.data;
+      if (Array.isArray(indicadores)) {
+        return indicadores;
+      }
+      // If response.data is the array directly
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
     }
     return [];
   },
@@ -26,7 +34,17 @@ export const indicadorService = {
   async create(indicadorData: Omit<Indicador, 'id'>): Promise<Indicador> {
     const response = await apiClient.post<{ data: Indicador }>('/indicadores', indicadorData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const indicador = (response.data as any).data || response.data;
+      if (!indicador) {
+        throw new Error('No indicador data returned from server');
+      }
+      // Ensure all required fields are present
+      if (!indicador.nombre || !indicador.descripcion || !indicador.lineaId || !indicador.objetivoId) {
+        console.error('Incomplete indicador data:', indicador);
+        throw new Error('Incomplete indicador data returned from server');
+      }
+      return indicador;
     }
     throw new Error(response.message || 'Failed to create indicador');
   },

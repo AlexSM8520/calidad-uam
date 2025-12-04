@@ -5,7 +5,15 @@ export const areaService = {
   async getAll(): Promise<Area[]> {
     const response = await apiClient.get<{ data: Area[]; count: number }>('/areas');
     if (response.success && response.data) {
-      return (response.data as any).data || [];
+      // Handle different response structures
+      const areas = (response.data as any).data || response.data;
+      if (Array.isArray(areas)) {
+        return areas;
+      }
+      // If response.data is the array directly
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
     }
     return [];
   },
@@ -21,7 +29,17 @@ export const areaService = {
   async create(areaData: Omit<Area, 'id'>): Promise<Area> {
     const response = await apiClient.post<{ data: Area }>('/areas', areaData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const area = (response.data as any).data || response.data;
+      if (!area) {
+        throw new Error('No area data returned from server');
+      }
+      // Ensure all required fields are present
+      if (!area.nombre) {
+        console.error('Incomplete area data:', area);
+        throw new Error('Incomplete area data returned from server');
+      }
+      return area;
     }
     throw new Error(response.message || 'Failed to create area');
   },
@@ -29,7 +47,12 @@ export const areaService = {
   async update(id: string, areaData: Partial<Omit<Area, 'id'>>): Promise<Area> {
     const response = await apiClient.put<{ data: Area }>(`/areas/${id}`, areaData);
     if (response.success && response.data) {
-      return (response.data as any).data;
+      // Handle different response structures
+      const area = (response.data as any).data || response.data;
+      if (!area) {
+        throw new Error('No area data returned from server');
+      }
+      return area;
     }
     throw new Error(response.message || 'Failed to update area');
   },

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
 import { AreaForm } from '../../components/AreaForm/AreaForm';
 import type { Area as AreaType } from '../../models/Area';
+import { extractId } from '../../utils/modelHelpers';
 import './Area.css';
 
 export const Area = () => {
@@ -26,13 +27,20 @@ export const Area = () => {
     setEditingArea(undefined);
   };
 
-  const handleSaveArea = (areaData: Omit<AreaType, 'id'>) => {
-    if (editingArea) {
-      poaViewModel.updateArea(editingArea.id, areaData);
-    } else {
-      poaViewModel.createArea(areaData);
+  const handleSaveArea = async (areaData: Omit<AreaType, 'id'>) => {
+    try {
+      if (editingArea) {
+        const areaId = extractId(editingArea);
+        if (areaId) {
+          await poaViewModel.updateArea(areaId, areaData);
+        }
+      } else {
+        await poaViewModel.createArea(areaData);
+      }
+      handleCloseForm();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al guardar el área');
     }
-    handleCloseForm();
   };
 
   const handleEditArea = (area: AreaType) => {
@@ -40,12 +48,12 @@ export const Area = () => {
     setIsFormOpen(true);
   };
 
-  const handleDeleteArea = (areaId: string) => {
+  const handleDeleteArea = async (areaId: string) => {
     if (confirm('¿Está seguro de eliminar esta área?')) {
       try {
-        poaViewModel.deleteArea(areaId);
+        await poaViewModel.deleteArea(areaId);
       } catch (error) {
-        alert('Error al eliminar el área. Puede estar siendo utilizada en algún POA.');
+        alert(error instanceof Error ? error.message : 'Error al eliminar el área. Puede estar siendo utilizada en algún POA.');
       }
     }
   };
@@ -90,7 +98,10 @@ export const Area = () => {
                       </button>
                       <button
                         className="btn-delete"
-                        onClick={() => handleDeleteArea(area.id)}
+                        onClick={() => {
+                          const areaId = extractId(area);
+                          if (areaId) handleDeleteArea(areaId);
+                        }}
                       >
                         Eliminar
                       </button>

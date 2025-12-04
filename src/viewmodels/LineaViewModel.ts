@@ -1,44 +1,56 @@
 import type { Linea } from '../models/Linea';
+import { lineaService } from '../services/lineaService';
+import { useAuthStore } from '../stores/authStore';
+import { normalizeArray, normalizeId, extractId } from '../utils/modelHelpers';
 
 export class LineaViewModel {
   private lineas: Linea[] = [];
   private isFormOpen: boolean = false;
   private listeners: Array<() => void> = [];
+  private dataLoaded: boolean = false;
 
   constructor() {
-    // Initialize with example data
-    this.lineas = [
-      {
-        id: '1',
-        nombre: 'Linea Verde',
-        descripcion: 'Iniciativa para promover la sostenibilidad ambiental en el campus universitario',
-        duracion: 24,
-        fechaInicio: '2024-01-15',
-        fechaFin: '2025-12-15',
-        color: '#22c55e',
-        plan: 'Plan institucional',
+    // Subscribe to auth changes and load data when authenticated
+    useAuthStore.subscribe(
+      (state) => state.isAuthenticated,
+      (isAuthenticated) => {
+        if (isAuthenticated && !this.dataLoaded) {
+          this.loadLineas();
+        } else if (!isAuthenticated) {
+          // Clear data when logged out
+          this.lineas = [];
+          this.dataLoaded = false;
+          this.notify();
+        }
       },
-      {
-        id: '2',
-        nombre: 'Linea de Innovación Tecnológica',
-        descripcion: 'Fortalecimiento de las capacidades tecnológicas y digitales de la universidad',
-        duracion: 36,
-        fechaInicio: '2024-03-01',
-        fechaFin: '2027-02-28',
-        color: '#3b82f6',
-        plan: 'Plan nacional',
-      },
-      {
-        id: '3',
-        nombre: 'Linea de Excelencia Académica',
-        descripcion: 'Mejora continua de los procesos académicos y de investigación',
-        duracion: 48,
-        fechaInicio: '2024-01-01',
-        fechaFin: '2027-12-31',
-        color: '#8b5cf6',
-        plan: 'Plan institucional',
-      },
-    ];
+      { equalityFn: (a, b) => a === b }
+    );
+
+    // Load data if already authenticated
+    // Use setTimeout to ensure store is fully initialized
+    setTimeout(() => {
+      const authState = useAuthStore.getState();
+      if (authState.isAuthenticated && !this.dataLoaded) {
+        console.log('LineaViewModel: User already authenticated, loading lineas');
+        this.loadLineas();
+      }
+    }, 100);
+  }
+
+  private async loadLineas() {
+    try {
+      console.log('Loading lineas...');
+      const lineas = await lineaService.getAll();
+      console.log('Lineas received from service:', lineas);
+      const normalized = normalizeArray(lineas);
+      console.log('Lineas normalized:', normalized);
+      this.lineas = normalized;
+      this.dataLoaded = true;
+      this.notify();
+      console.log('Lineas loaded, count:', this.lineas.length);
+    } catch (error) {
+      console.error('Error loading lineas:', error);
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -72,18 +84,34 @@ export class LineaViewModel {
     this.notify();
   }
 
-  addLinea(linea: Omit<Linea, 'id'>): void {
-    const newLinea: Linea = {
-      ...linea,
-      id: Date.now().toString(),
-    };
-    this.lineas = [...this.lineas, newLinea];
-    this.notify();
+  async addLinea(linea: Omit<Linea, 'id' | '_id'>): Promise<void> {
+    try {
+      const newLinea = await lineaService.create(linea);
+      if (!newLinea) {
+        throw new Error('Failed to create linea: No data returned');
+      }
+      const normalized = normalizeId(newLinea);
+      // Validate that normalized linea has required fields
+      if (!normalized.nombre || !normalized.descripcion) {
+        console.error('Invalid linea returned from server:', normalized);
+        throw new Error('Invalid linea data returned from server');
+      }
+      this.lineas = [...this.lineas, normalized];
+      this.notify();
+    } catch (error) {
+      console.error('Error adding linea:', error);
+      throw error;
+    }
   }
 
-  deleteLinea(id: string): void {
-    this.lineas = this.lineas.filter(l => l.id !== id);
-    this.notify();
+  async deleteLinea(id: string): Promise<void> {
+    try {
+      await lineaService.delete(id);
+      this.lineas = this.lineas.filter(l => extractId(l) !== id);
+      this.notify();
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

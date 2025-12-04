@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authViewModel } from '../../viewmodels/AuthViewModel';
+import { useAuthStore } from '../../stores/authStore';
 import { poaViewModel } from '../../viewmodels/POAViewModel';
+import { extractId } from '../../utils/modelHelpers';
 import type { POA } from '../../models/POA';
 import './Dashboard.css';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(authViewModel.getAuthState().user);
+  const user = useAuthStore((state) => state.user);
   const [poas, setPoas] = useState<POA[]>([]);
 
   useEffect(() => {
@@ -17,10 +18,12 @@ export const Dashboard = () => {
       if (user && user.rol === 'Usuario') {
         const filteredPOAs = allPOAs.filter(poa => {
           if (user.carreraId && poa.tipo === 'carrera') {
-            return poa.carreraId === user.carreraId;
+            const poaCarreraId = typeof poa.carreraId === 'string' ? poa.carreraId : extractId(poa.carreraId);
+            return poaCarreraId === user.carreraId;
           }
           if (user.areaId && poa.tipo === 'area') {
-            return poa.areaId === user.areaId;
+            const poaAreaId = typeof poa.areaId === 'string' ? poa.areaId : extractId(poa.areaId);
+            return poaAreaId === user.areaId;
           }
           return false;
         });
@@ -32,20 +35,25 @@ export const Dashboard = () => {
     return unsubscribe;
   }, [user]);
 
-  useEffect(() => {
-    const unsubscribe = authViewModel.subscribe((state) => {
-      setUser(state.user);
-    });
-    return unsubscribe;
-  }, []);
-
   const getEntityName = (poa: POA) => {
     if (poa.tipo === 'area' && poa.areaId) {
-      const area = poaViewModel.getAreas().find(a => a.id === poa.areaId);
+      // If areaId is an object with nombre property
+      if (typeof poa.areaId === 'object' && 'nombre' in poa.areaId) {
+        return poa.areaId.nombre;
+      }
+      // If areaId is a string, find it in the areas list
+      const areaIdStr = typeof poa.areaId === 'string' ? poa.areaId : extractId(poa.areaId);
+      const area = poaViewModel.getAreas().find(a => extractId(a) === areaIdStr);
       return area?.nombre || 'N/A';
     }
     if (poa.tipo === 'carrera' && poa.carreraId) {
-      const carrera = poaViewModel.getCarreras().find(c => c.id === poa.carreraId);
+      // If carreraId is an object with nombre property
+      if (typeof poa.carreraId === 'object' && 'nombre' in poa.carreraId) {
+        return poa.carreraId.nombre;
+      }
+      // If carreraId is a string, find it in the carreras list
+      const carreraIdStr = typeof poa.carreraId === 'string' ? poa.carreraId : extractId(poa.carreraId);
+      const carrera = poaViewModel.getCarreras().find(c => extractId(c) === carreraIdStr);
       return carrera?.nombre || 'N/A';
     }
     return 'N/A';
