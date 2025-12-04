@@ -18,6 +18,7 @@ import { Users } from './views/Users/Users';
 import { Dashboard } from './views/Dashboard/Dashboard';
 import { UserPOAs } from './views/UserPOAs/UserPOAs';
 import { CargarEvidencias } from './views/CargarEvidencias/CargarEvidencias';
+import { VerEvidencias } from './views/VerEvidencias/VerEvidencias';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute/RoleProtectedRoute';
 import { useAuthStore } from './stores/authStore';
 import './App.css';
@@ -116,6 +117,13 @@ function App() {
           <RoleProtectedRoute allowedRoles={['Administrador']}>
             <Layout>
               <CargarEvidencias />
+            </Layout>
+          </RoleProtectedRoute>
+        } />
+        <Route path="/ver-evidencias" element={
+          <RoleProtectedRoute allowedRoles={['Administrador']}>
+            <Layout>
+              <VerEvidencias />
             </Layout>
           </RoleProtectedRoute>
         } />

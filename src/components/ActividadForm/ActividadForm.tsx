@@ -3,9 +3,11 @@ import type { Actividad, FrecuenciaReporte } from '../../models/POA';
 import { lineaViewModel } from '../../viewmodels/LineaViewModel';
 import { objetivoViewModel } from '../../viewmodels/ObjetivoViewModel';
 import { indicadorViewModel } from '../../viewmodels/IndicadorViewModel';
+import { userViewModel } from '../../viewmodels/UserViewModel';
 import type { Linea } from '../../models/Linea';
 import type { Objetivo } from '../../models/Objetivo';
 import type { Indicador } from '../../models/Indicador';
+import type { User } from '../../models/User';
 import { extractId } from '../../utils/modelHelpers';
 import './ActividadForm.css';
 
@@ -21,6 +23,35 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [objetivos, setObjetivos] = useState<Objetivo[]>([]);
   const [indicadores, setIndicadores] = useState<Indicador[]>([]);
+  const [usuarios, setUsuarios] = useState<User[]>([]);
+
+  // Helper to get user display name
+  const getUserDisplayName = (user: User): string => {
+    if (user.nombre && user.apellido) {
+      return `${user.nombre} ${user.apellido} (${user.username})`;
+    }
+    return user.username;
+  };
+
+  // Find matching user for existing responsable
+  const findMatchingUser = (responsableValue: string, users: User[]): string => {
+    if (!responsableValue || users.length === 0) return responsableValue || '';
+    // Try to find exact match first
+    const exactMatch = users.find(user => {
+      const displayName = getUserDisplayName(user);
+      return displayName === responsableValue || user.username === responsableValue;
+    });
+    if (exactMatch) {
+      return getUserDisplayName(exactMatch);
+    }
+    // Try to find by username if responsable is just a username
+    const usernameMatch = users.find(user => user.username === responsableValue);
+    if (usernameMatch) {
+      return getUserDisplayName(usernameMatch);
+    }
+    // Return original value if no match found (for backward compatibility)
+    return responsableValue;
+  };
 
   const [formData, setFormData] = useState({
     nombre: actividad?.nombre || '',
@@ -34,6 +65,16 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
     objetivoId: extractId(actividad?.objetivoId),
     indicadorId: extractId(actividad?.indicadorId),
   });
+
+  // Update responsable when usuarios are loaded and actividad has a responsable
+  useEffect(() => {
+    if (actividad?.responsable && usuarios.length > 0) {
+      const matchingUser = findMatchingUser(actividad.responsable, usuarios);
+      if (matchingUser && matchingUser !== formData.responsable) {
+        setFormData(prev => ({ ...prev, responsable: matchingUser }));
+      }
+    }
+  }, [usuarios.length, actividad?.responsable]); // Update when usuarios load or actividad changes
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -50,10 +91,19 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
       setIndicadores(indicadorViewModel.getAllIndicadores());
     });
 
+    const unsubscribeUser = userViewModel.subscribe(() => {
+      // Filter only users with role "Usuario" and active
+      const usuariosActivos = userViewModel.getUsers().filter(
+        user => user.rol === 'Usuario' && user.activo !== false
+      );
+      setUsuarios(usuariosActivos);
+    });
+
     return () => {
       unsubscribeLinea();
       unsubscribeObjetivo();
       unsubscribeIndicador();
+      unsubscribeUser();
     };
   }, []);
 
@@ -325,13 +375,23 @@ export const ActividadForm = ({ onClose, onSave, actividad, fechaInicioPOA, fech
             <label htmlFor="responsable">
               Responsable <span className="required">*</span>
             </label>
-            <input
-              type="text"
+            <select
               id="responsable"
               value={formData.responsable}
               onChange={(e) => handleChange('responsable', e.target.value)}
               className={errors.responsable ? 'error' : ''}
-            />
+            >
+              <option value="">Seleccione un responsable</option>
+              {usuarios.map((usuario) => {
+                const userId = extractId(usuario);
+                const displayName = getUserDisplayName(usuario);
+                return (
+                  <option key={userId} value={displayName}>
+                    {displayName}
+                  </option>
+                );
+              })}
+            </select>
             {errors.responsable && <span className="error-message">{errors.responsable}</span>}
           </div>
 

@@ -10,6 +10,7 @@ export interface Evidencia {
   nombreOriginal: string; // original filename
   mimeType: string;
   tamaño: number; // bytes
+  url?: string; // Public URL to access the file (provided by API)
   actividadId: string;
   poaId: string | { _id?: string; tipo?: string; periodo?: number };
   uploadedBy?: {

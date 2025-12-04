@@ -28,7 +28,7 @@ export const Sidebar = () => {
     const path = location.pathname;
     setExpandedSections({
       lineaEstrategica: path === '/linea' || path === '/objetivos' || path === '/indicadores',
-      poa: path === '/create-poa' || path === '/poas' || path.startsWith('/edit-poa/') || path === '/cargar-evidencias',
+      poa: path === '/create-poa' || path === '/poas' || path.startsWith('/edit-poa/') || path === '/cargar-evidencias' || path === '/ver-evidencias',
       carreraArea: path === '/area' || path === '/carrera' || path === '/facultades',
     });
   }, [location.pathname, user]);
@@ -142,6 +142,12 @@ export const Sidebar = () => {
                 onClick={() => navigate('/cargar-evidencias')}
               >
                 Cargar Evidencias
+              </button>
+              <button
+                className={`nav-item ${isActive('/ver-evidencias') ? 'active' : ''}`}
+                onClick={() => navigate('/ver-evidencias')}
+              >
+                Ver Evidencias
               </button>
             </div>
           )}

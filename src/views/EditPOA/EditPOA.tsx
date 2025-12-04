@@ -47,21 +47,20 @@ export const EditPOA = () => {
     // Cargar datos del POA
     setTipo(poa.tipo);
     // Handle areaId and carreraId as string or object
-    const areaIdValue = typeof poa.areaId === 'string' 
-      ? poa.areaId 
-      : (poa.areaId && typeof poa.areaId === 'object' && '_id' in poa.areaId)
-        ? poa.areaId._id
-        : '';
-    const carreraIdValue = typeof poa.carreraId === 'string'
-      ? poa.carreraId
-      : (poa.carreraId && typeof poa.carreraId === 'object' && '_id' in poa.carreraId)
-        ? poa.carreraId._id
-        : '';
+    const areaIdValue = extractId(poa.areaId) || '';
+    const carreraIdValue = extractId(poa.carreraId) || '';
     setAreaId(areaIdValue);
     setCarreraId(carreraIdValue);
     setPeriodo(poa.periodo);
-    setFechaInicio(poa.fechaInicio);
-    setFechaFin(poa.fechaFin);
+    // Format dates for date input (YYYY-MM-DD)
+    const formatDateForInput = (dateString: string) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    };
+    setFechaInicio(formatDateForInput(poa.fechaInicio));
+    setFechaFin(formatDateForInput(poa.fechaFin));
     setActividades(poa.actividades || []);
   }, [id, navigate]);
 
@@ -132,21 +131,24 @@ export const EditPOA = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleUpdatePOA = () => {
+  const handleUpdatePOA = async () => {
     if (!id || !validateForm()) {
       return;
     }
 
-    poaViewModel.updatePOA(id, {
-      tipo: tipo as POAType,
-      areaId: tipo === 'area' ? areaId : undefined,
-      carreraId: tipo === 'carrera' ? carreraId : undefined,
-      periodo,
-      fechaInicio,
-      fechaFin,
-    });
-
-    alert('POA actualizado correctamente');
+    try {
+      await poaViewModel.updatePOA(id, {
+        tipo: tipo as POAType,
+        areaId: tipo === 'area' ? areaId : null,
+        carreraId: tipo === 'carrera' ? carreraId : null,
+        periodo,
+        fechaInicio,
+        fechaFin,
+      });
+      alert('POA actualizado correctamente');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al actualizar el POA');
+    }
   };
 
   const handleAddActividad = () => {
@@ -159,28 +161,50 @@ export const EditPOA = () => {
     setIsActividadFormOpen(true);
   };
 
-  const handleSaveActividad = (actividadData: Omit<Actividad, 'id'>) => {
+  const handleSaveActividad = async (actividadData: Omit<Actividad, 'id'>) => {
     if (!id) {
       alert('Error: No se encontró el POA');
       return;
     }
 
-    if (editingActividad) {
-      const actividadId = extractId(editingActividad);
-      if (actividadId) {
-        poaViewModel.updateActividad(id, actividadId, actividadData);
+    try {
+      if (editingActividad) {
+        const actividadId = extractId(editingActividad);
+        if (actividadId) {
+          await poaViewModel.updateActividad(id, actividadId, actividadData);
+        }
+      } else {
+        await poaViewModel.addActividadToPOA(id, actividadData);
       }
-    } else {
-      poaViewModel.addActividadToPOA(id, actividadData);
+      setIsActividadFormOpen(false);
+      setEditingActividad(undefined);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al guardar la actividad');
     }
-    setIsActividadFormOpen(false);
-    setEditingActividad(undefined);
   };
 
-  const handleDeleteActividad = (actividadId: string) => {
+  const handleDeleteActividad = async (actividadId: string) => {
     if (!id) return;
     if (confirm('¿Está seguro de eliminar esta actividad?')) {
-      poaViewModel.deleteActividad(id, actividadId);
+      try {
+        await poaViewModel.deleteActividad(id, actividadId);
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Error al eliminar la actividad');
+      }
+    }
+  };
+
+  const handleChangeEstadoActividad = async (actividadId: string, nuevoEstado: Actividad['estado']) => {
+    if (!id) return;
+    try {
+      const actividad = actividades.find(a => extractId(a) === actividadId);
+      if (!actividad) return;
+
+      await poaViewModel.updateActividad(id, actividadId, {
+        estado: nuevoEstado,
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error al actualizar el estado de la actividad');
     }
   };
 
@@ -401,9 +425,21 @@ export const EditPOA = () => {
                     <td className="indicador-cell">{getIndicadorNombre(actividad.indicadorId)}</td>
                     <td>{actividad.responsable}</td>
                     <td>
-                      <span className={`estado-badge ${getEstadoBadgeClass(actividad.estado)}`}>
-                        {actividad.estado}
-                      </span>
+                      <select
+                        className={`estado-select ${getEstadoBadgeClass(actividad.estado)}`}
+                        value={actividad.estado}
+                        onChange={(e) => {
+                          const actividadId = extractId(actividad);
+                          if (actividadId) {
+                            handleChangeEstadoActividad(actividadId, e.target.value as Actividad['estado']);
+                          }
+                        }}
+                      >
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="Completada">Completada</option>
+                        <option value="Cancelada">Cancelada</option>
+                      </select>
                     </td>
                     <td>
                       <div className="action-buttons">

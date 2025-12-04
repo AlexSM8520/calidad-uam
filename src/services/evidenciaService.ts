@@ -93,9 +93,14 @@ export const evidenciaService = {
     }
   },
 
-  getFileUrl(archivo: string): string {
+  getFileUrl(evidencia: Evidencia): string {
+    // Use the URL from API if available, otherwise construct it
+    if (evidencia.url) {
+      return evidencia.url;
+    }
+    // Fallback: construct URL if API doesn't provide it
     const baseUrl = API_BASE_URL.replace('/api', '');
-    return `${baseUrl}/public/evidencia/${archivo}`;
+    return `${baseUrl}/public/evidencia/${evidencia.archivo}`;
   },
 };
 

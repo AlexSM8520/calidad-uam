@@ -249,6 +249,47 @@
   font-weight: 600;
 }
 
+.estado-select {
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+  background-color: var(--color-secondary);
+}
+
+.estado-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 153, 168, 0.2);
+}
+
+.estado-select.estado-pendiente {
+  background-color: #fef3c7;
+  color: #d97706;
+  border-color: #f59e0b;
+}
+
+.estado-select.estado-progreso {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.estado-select.estado-completada {
+  background-color: #d1fae5;
+  color: #065f46;
+  border-color: #10b981;
+}
+
+.estado-select.estado-cancelada {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
+}
+
 .estado-pendiente {
   background-color: #fef3c7;
   color: #d97706;

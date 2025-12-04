@@ -395,7 +395,7 @@ export const CargarEvidencias = () => {
                           </div>
                           <div className="evidencia-actions">
                             <a
-                              href={evidenciaService.getFileUrl(evidencia.archivo)}
+                              href={evidenciaService.getFileUrl(evidencia)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn-view"
