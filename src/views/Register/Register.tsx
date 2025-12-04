@@ -59,8 +59,22 @@ export const Register = () => {
       return false;
     }
 
-    if (formData.password.length < 3) {
-      setError('La contraseña debe tener al menos 3 caracteres');
+    // Validación de contraseña más estricta
+    if (formData.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres');
+      return false;
+    }
+
+    // Validar que contenga al menos un número
+    if (!/\d/.test(formData.password)) {
+      setError('La contraseña debe contener al menos un número');
+      return false;
+    }
+
+    // Validar que contenga al menos un signo especial
+    // Signos especiales comunes: !@#$%^&*()_+-=[]{}|;:,.<>?
+    if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(formData.password)) {
+      setError('La contraseña debe contener al menos un signo especial (!@#$%^&*()_+-=[]{}|;:,.<>?)');
       return false;
     }
 
@@ -200,10 +214,13 @@ export const Register = () => {
               type="password"
               value={formData.password}
               onChange={(e) => handleChange('password', e.target.value)}
-              placeholder="Mínimo 3 caracteres"
+              placeholder="Mínimo 8 caracteres, con número y signo especial"
               required
               disabled={isLoading}
             />
+            <small className="form-hint">
+              La contraseña debe tener al menos 8 caracteres, incluir un número y un signo especial
+            </small>
           </div>
 
           <div className="form-group">

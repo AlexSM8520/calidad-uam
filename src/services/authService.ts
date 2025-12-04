@@ -62,22 +62,59 @@ export const authService = {
     carreraId?: string;
     areaId?: string;
   }): Promise<LoginResponse> {
-    // Register endpoint returns token and user at root level, similar to login
+    // Register endpoint returns user at root level
     const response = await apiClient.post<any>('/auth/register', userData);
 
-    // According to API docs, register response structure is:
-    // { success: true, token: "...", user: {...} }
-    if (response.success && (response as any).token && (response as any).user) {
-      const registerData: LoginResponse = {
-        success: true,
-        token: (response as any).token,
-        user: (response as any).user,
+    console.log('Register response:', response);
+
+    // Handle response structure: { success: true, message: "...", user: {...} }
+    if (response.success && response.user) {
+      const user = response.user;
+      
+      // Normalize user ID (convert id to _id for consistency with MongoDB)
+      const normalizedUser: User = {
+        ...user,
+        _id: user._id || user.id,
+        id: user.id || user._id,
       };
-      apiClient.setToken(registerData.token);
-      return registerData;
+
+      // Check if token is in response (some APIs include it, others don't)
+      const token = (response as any).token;
+      
+      if (token) {
+        // Token provided, set it and return
+        const registerData: LoginResponse = {
+          success: true,
+          token: token,
+          user: normalizedUser,
+        };
+        apiClient.setToken(token);
+        return registerData;
+      } else {
+        // No token in response - according to Swagger docs, register should return token
+        // But if it doesn't, we need to login after registration
+        // For now, try to auto-login with the credentials
+        try {
+          console.log('No token in register response, attempting auto-login...');
+          const loginResponse = await this.login(userData.username, userData.password);
+          return {
+            success: true,
+            token: loginResponse.token,
+            user: normalizedUser, // Use the user from register response
+          };
+        } catch (loginError) {
+          console.error('Auto-login failed:', loginError);
+          // If auto-login fails, still return success but without token
+          // User will need to login manually
+          throw new Error('Usuario registrado exitosamente, pero no se pudo iniciar sesión automáticamente. Por favor, inicie sesión.');
+        }
+      }
     }
 
-    throw new Error(response.message || 'Error al registrar el usuario');
+    // If we get here, the response structure is unexpected
+    const errorMessage = (response as any).message || response.message || 'Error al registrar el usuario';
+    console.error('Unexpected register response structure:', response);
+    throw new Error(errorMessage);
   },
 };
 

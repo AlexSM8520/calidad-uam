@@ -41,6 +41,14 @@
   font-size: 14px;
 }
 
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
 .form-group input {
   width: 100%;
   padding: 12px;

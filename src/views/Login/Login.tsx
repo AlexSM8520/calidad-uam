@@ -71,7 +71,7 @@ export const Login = () => {
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
           <div className="login-hint">
-            <small>Default: Admin / 123</small>
+           {/* <small>Default: Admin / 123</small> */}
           </div>
           <div className="login-footer">
             <p>
